@@ -1,0 +1,14 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+
+terraform.tfvars
+
+.env
+.env.*
+
+*.pem
+id_ed25519
+id_ed25519.pub
+
+*.log

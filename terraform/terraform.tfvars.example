@@ -1,0 +1,19 @@
+# Example Terraform variable configuration.
+# Copy this file to terraform.tfvars and replace the placeholders
+# with values for your own environment.
+
+location            = "eastus2"
+resource_group_name = "rg-openwebui"
+vm_name             = "vm-openwebui"
+
+# PLACEHOLDER: Linux administrator username.
+admin_username = "azureadmin"
+
+# PLACEHOLDER: Replace with your SSH public key.
+ssh_public_key = "YOUR_SSH_PUBLIC_KEY_HERE"
+
+# PLACEHOLDER: Replace with the public IP address that should be allowed to SSH into the Azure VM.
+allowed_ssh_cidr = "YOUR_PUBLIC_IP/32"
+
+# PLACEHOLDER: Replace with the public IP address that should be allowed to access Open WebUI.
+allowed_web_cidr = "YOUR_PUBLIC_IP/32"

@@ -2,17 +2,16 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict
 
 # Auth
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-
 class UserResponse(BaseModel):
     id: int
     name: str
     username: str
 
     model_config = ConfigDict(from_attributes=True)
+    
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
     
 # Chats
 class ChatResponse(BaseModel):
@@ -56,6 +55,11 @@ class DocumentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 # Knowledge Bases
+class KnowledgeBaseCreate(BaseModel):
+    title: str
+    description: str
+    
+    
 class KnowledgeBaseResponse(BaseModel):
     id: int
     title: str

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from database import engine, Base
-from routers import chats
+from routers import chats, documents, knowledge, auth
 
 app = FastAPI(
     title="Internal AI Chat Platform",
@@ -11,6 +11,10 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 
 app.include_router(chats.router)
+app.include_router(documents.router)
+app.include_router(knowledge.router)
+app.include_router(auth.router)
+
 
 @app.get("/")
 def read_root():

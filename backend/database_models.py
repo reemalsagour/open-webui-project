@@ -17,6 +17,11 @@ class User(Base):
         back_populates="user", 
         cascade="all, delete-orphan"
     )
+    knowledge_bases: Mapped[List["KnowledgeBase"]] = relationship(
+        "KnowledgeBase", 
+        back_populates="user", 
+        cascade="all, delete-orphan"
+    )
     
 class Chat(Base):
     __tablename__ = "chats"
@@ -88,8 +93,14 @@ class KnowledgeBase(Base):
     updated_date: Mapped[date]
     documents: Mapped[List["Document"]] = relationship(
             "Document", 
-            back_populates="knowledge_base", 
-            cascade="all, delete-orphan"
+            back_populates="knowledge_base"
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id")
+    )
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="knowledge_bases"
     )
 
     

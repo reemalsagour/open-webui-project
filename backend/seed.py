@@ -1,7 +1,16 @@
 from datetime import date
 
-from database import SessionLocal
+from database import SessionLocal, Base, engine
 from database_models import User, Chat, Message, Document, KnowledgeBase
+from auth_logic import get_password_hash
+
+
+# -------------------------
+# Reset database tables
+# -------------------------
+
+Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 
 db = SessionLocal()
@@ -15,13 +24,13 @@ try:
     user1 = User(
         name="Fatimah",
         username="fatimah",
-        password="password123"
+        password=get_password_hash("password")
     )
 
     user2 = User(
         name="Ahmed",
         username="ahmed",
-        password="password456"
+        password=get_password_hash("password")
     )
 
     db.add_all([user1, user2])
@@ -116,14 +125,16 @@ try:
         title="Company Policies",
         description="Internal company policies and procedures.",
         created_date=date(2026, 9, 1),
-        updated_date=date(2026, 9, 10)
+        updated_date=date(2026, 9, 10),
+        user_id=user1.id
     )
 
     knowledge2 = KnowledgeBase(
         title="Technical Documentation",
         description="Technical documentation for internal projects.",
         created_date=date(2026, 9, 5),
-        updated_date=date(2026, 9, 14)
+        updated_date=date(2026, 9, 14),
+        user_id=user2.id
     )
 
     db.add_all([knowledge1, knowledge2])
@@ -170,9 +181,13 @@ try:
     ])
 
 
+    # -------------------------
+    # Save everything
+    # -------------------------
+
     db.commit()
 
-    print("Database seeded successfully!")
+    print("Database reset and seeded successfully!")
 
 
 except Exception:

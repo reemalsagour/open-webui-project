@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic_models import ChatResponse, ChatDetailResponse
 from sqlalchemy.orm import Session
 from database import get_db
@@ -16,7 +16,7 @@ def get_all_chats(db: Session = Depends(get_db)):
     chats = db.query(Chat).all()
     return chats
 
-@router.post("/", response_model=ChatMessageResponse)
+@router.post("/", status_code=201, response_model=ChatMessageResponse)
 def create_a_chat_and_send_message( message: MessageCreate, db: Session = Depends(get_db)):
     chat = Chat(
         title="temp title",
@@ -46,11 +46,15 @@ def create_a_chat_and_send_message( message: MessageCreate, db: Session = Depend
 @router.get("/{chat_id}", response_model=ChatDetailResponse)
 def get_chat_by_id(chat_id: int, db: Session = Depends(get_db)):
     chat = db.query(Chat).get(chat_id)
+    if chat == None:
+         raise HTTPException(status_code=404, detail="Chat not found")
     return chat
 
 @router.delete("/{chat_id}")
 def delete_chat_by_id(chat_id: int, db: Session = Depends(get_db)):
     chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    if chat == None:
+        raise HTTPException(status_code=404, detail="Chat not found")
     db.delete(chat)
     db.commit()
     return {"message": "Chat deleted successfully"}

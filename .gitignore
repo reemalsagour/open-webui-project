@@ -5,7 +5,7 @@
 terraform.tfvars
 
 .env
-.env.*
+
 
 *.pem
 id_ed25519

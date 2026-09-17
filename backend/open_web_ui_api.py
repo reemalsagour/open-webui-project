@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 import requests
 import os
 from dotenv import load_dotenv
@@ -13,7 +14,7 @@ open_web_ui_api_url = os.getenv('OPEN_WEB_UI_API_URL')
 #######################
 
 def get_available_models():
-    url = f'{open_web_ui_api_url}/api/models'
+    url = f'{open_web_ui_api_url}/api/v1/models'
     headers = {
         'Authorization': f'Bearer {open_web_ui_api_key}',
         'Content-Type': 'application/json'
@@ -25,27 +26,63 @@ def get_available_models():
 #        chat         #
 #######################
     
-def chat_with_model(messages, documents, knowledgeBase, model = 'gemini-3.8-flash'):
-    url = f'{open_web_ui_api_url}/api/chat/completions'
+def chat_with_model(messages, files = None, model = 'gemini-3.1-flash-lite'):
+    url = f'{open_web_ui_api_url}/api/v1/chat/completions'
     headers = {
         'Authorization': f'Bearer {open_web_ui_api_key}',
         'Content-Type': 'application/json'
     }
     data = {
       "model": model,
-      "messages": messages,
-    # for both knowledge and document, add it programaticaly
-    #   'files': [{'type': 'collection', 'id': collection_id}]
-    #   'files': [{'type': 'file', 'id': file_id}]
-    #   "messages": [
-    #     {
-    #       "role": "user",
-    #       "content": "Why is the sky blue?"
-    #     }
-    #   ]
+      "messages": messages
     }
-    response = requests.post(url, headers=headers, json=data)
-    return response.json()
+    
+    if files != None:
+        data['files'] = files
+        
+    try:
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data,
+            timeout=60
+        )
+
+    except requests.RequestException:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not connect to the AI service."
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service is currently unavailable."
+        )
+
+    try:
+        response_data = response.json()
+    except ValueError:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service returned an invalid response."
+        )
+
+    if "choices" not in response_data or len(response_data["choices"]) == 0:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service returned an unexpected response."
+        )
+
+    message = response_data["choices"][0].get("message")
+
+    if message is None or "content" not in message:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service returned an unexpected response."
+        )
+
+    return response_data["choices"][0]["message"]["content"]
 
 #######################
 #      documents      #
@@ -68,7 +105,7 @@ def upload_file(file):
     return response.json()
 
 def wait_for_file_processing(file_id, timeout=300, poll_interval=2):
-    url = f'{open_web_ui_api_url}/api/files/{file_id}/process/status'
+    url = f'{open_web_ui_api_url}/api/v1/files/{file_id}/process/status'
     headers = {'Authorization': f'Bearer {open_web_ui_api_key}'}
     
     start_time = time.time()
@@ -96,6 +133,15 @@ def get_files():
     return response.json()
 
 def get_file_by_id(id):
+    url = f'{open_web_ui_api_url}/api/v1/files/{id}'
+    headers = {
+        'Authorization': f'Bearer {open_web_ui_api_key}',
+        'accept': 'application/json'
+    }
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+def get_file_content_by_id(id):
     url = f'{open_web_ui_api_url}/api/v1/files/{id}'
     headers = {
         'Authorization': f'Bearer {open_web_ui_api_key}',

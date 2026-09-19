@@ -2,13 +2,15 @@ from datetime import datetime
 from io import BytesIO
 import asyncio
 
-from database import SessionLocal, Base, engine
+from database import SessionLocal
 from database_models import (
     User,
     Chat,
     Message,
     Document,
-    KnowledgeBase
+    KnowledgeBase,
+    ChatDocument,
+    KnowledgeDocument
 )
 from auth_logic import get_password_hash
 
@@ -18,14 +20,6 @@ from open_web_ui_api import (
     create_knowledge,
     add_file_to_knowledge
 )
-
-
-# -------------------------
-# Reset database tables
-# -------------------------
-
-Base.metadata.drop_all(bind=engine)
-Base.metadata.create_all(bind=engine)
 
 
 db = SessionLocal()
@@ -43,6 +37,23 @@ class SeedFile:
 
 
 try:
+
+    # -------------------------
+    # Reset database data
+    # -------------------------
+    # Alembic manages the tables.
+    # The seed only deletes the existing rows.
+
+    db.query(Message).delete()
+    db.query(ChatDocument).delete()
+    db.query(KnowledgeDocument).delete()
+    db.query(Chat).delete()
+    db.query(Document).delete()
+    db.query(KnowledgeBase).delete()
+    db.query(User).delete()
+
+    db.commit()
+
 
     # -------------------------
     # Users

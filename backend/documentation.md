@@ -54,6 +54,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1Ni...
 | `GET`  | `/openwebui/`      | No             | None    | Open WebUI health response          |
 | `GET`  | `/openwebui/db`    | No             | None    | Open WebUI database health response |
 | `GET`  | `/openwebui/ready` | No             | None    | Open WebUI readiness response       |
+| `GET`  | `/openwebui/models` | No             | None    | Open WebUI available models list       |
 
 ### `GET /`
 
@@ -73,6 +74,66 @@ Response:
 {
   "status": "ok"
 }
+```
+
+### `GET /openwebui`
+
+Response:
+
+```json
+{
+  "status": true
+}
+```
+
+### `GET /openwebui/db`
+
+Response:
+
+```json
+{
+  "status": true
+}
+```
+
+### `GET /openwebui/ready`
+
+Response:
+
+```json
+{
+  "status": true
+}
+```
+
+### `GET /openwebui/models`
+
+Response:
+
+```json
+[
+  {
+    "id": "gemini-3.1-flash-lite",
+    "name": "gemini-3.1-flash-lite",
+    "owned_by": "openai",
+    "openai": {
+      "id": "gemini-3.1-flash-lite",
+      "name": "gemini-3.1-flash-lite",
+      "owned_by": "openai",
+      "openai": {
+        "id": "gemini-3.1-flash-lite"
+      },
+      "urlIdx": 1,
+      "connection_type": "external"
+    },
+    "urlIdx": 1,
+    "connection_type": "external",
+    "provider": "",
+    "actions": [],
+    "filters": [],
+    "tags": []
+  }
+]
 ```
 
 ---

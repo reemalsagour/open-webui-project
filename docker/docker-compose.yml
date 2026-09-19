@@ -39,6 +39,7 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
       - OPEN_WEB_UI_API_KEY=${OPEN_WEB_UI_API_KEY}
       - OPEN_WEB_UI_API_URL=http://open-webui:8080
+      - DB_URL=db:5432
     ports:
       - "8000:8000"
     depends_on:

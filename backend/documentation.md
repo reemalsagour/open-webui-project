@@ -35,15 +35,21 @@ If you are running the backend with Docker Compose, PostgreSQL is started automa
 
 Run the Alembic migrations:
 
+If you are running the backend directly on your computer, run:
 ```bash
 alembic upgrade head
+```
+
+If you are running the backend using Docker Compose, run:
+```bash
+ docker compose --env-file "../.env" exec backend alembic upgrade head
 ```
 
 Alembic is responsible for creating and updating the database schema.
 
 > You only need to run this when setting up the database or when new migrations are added.
 
-## 0.5 Optional: Add sample data
+## 0.5 Add sample data
 
 The project includes a seed script for development and testing.
 
@@ -56,12 +62,10 @@ python seed.py
 If you are running the backend using Docker Compose, run the seed **once manually from the backend container**:
 
 ```bash
-docker compose exec backend python seed.py
+docker compose --env-file "../.env" exec backend python seed.py
 ```
 
 This creates sample users, chats, messages, documents, and knowledge-base data.
-
-> The seed script is optional. You do not need to run it for the backend to start.
 
 > **Important:** The seed script also creates resources in Open WebUI. Avoid running it repeatedly unless you intend to recreate the sample data.
 
@@ -90,7 +94,7 @@ uvicorn main:app --reload
 If you are using Docker Compose, start the backend with:
 
 ```bash
-docker compose --env-file ../.env up --build
+docker compose --env-file "../.env" up -d
 ```
 
 The backend will be available at:
@@ -125,7 +129,7 @@ Start PostgreSQL
         ↓
 Run: alembic upgrade head
         ↓
-(Optional) Run: python seed.py
+Run: python seed.py
         ↓
 Start Open WebUI
         ↓
@@ -143,8 +147,9 @@ Run: docker compose --env-file ../.env up --build
         ↓
 PostgreSQL + Open WebUI + Backend start
         ↓
-(Optional) Run:
-docker compose exec backend python seed.py
+Run: docker compose --env-file "../.env" exec backend alembic upgrade head
+        ↓
+Run: docker compose --env-file "../.env" exec backend python seed.py
         ↓
 Backend ready at http://localhost:8000
 ```

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-DATABASE_URL = f"postgresql://postgres:{os.getenv('POSTGRES_PASSWORD')}@localhost:5432/openwebuiproject"
+DATABASE_URL = f"postgresql://postgres:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('DB_URL')}/openwebuiproject"
 
 engine = create_engine(DATABASE_URL)
 

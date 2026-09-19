@@ -17,7 +17,7 @@ load_dotenv()
 
 database_url = (
     f"postgresql://postgres:{os.getenv('POSTGRES_PASSWORD')}"
-    f"@localhost:5432/openwebuiproject"
+    f"@{os.getenv('DB_URL')}/openwebuiproject"
 )
 
 config.set_main_option("sqlalchemy.url", database_url)

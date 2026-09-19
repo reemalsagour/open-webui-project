@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict
-from uuid import uuid4, UUID
+from uuid import UUID
 
 # Auth
 class UserResponse(BaseModel):
@@ -18,8 +18,8 @@ class TokenResponse(BaseModel):
 class ChatResponse(BaseModel):
     id: UUID
     title: str
-    created_date: date
-    update_date: date
+    created_date: datetime
+    update_date: datetime
     user_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
@@ -38,7 +38,7 @@ class MessageResponse(BaseModel):
     id: UUID
     role: str
     content: str
-    created_date: date
+    created_date: datetime
 
     model_config = ConfigDict(from_attributes=True)
     
@@ -51,9 +51,7 @@ class ChatMessageResponse(BaseModel):
 class DocumentResponse(BaseModel):
     id: UUID
     name: str
-    created_date: date
-    chat_id: UUID | None
-    knowledge_id: UUID | None
+    created_date: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -67,8 +65,8 @@ class KnowledgeBaseResponse(BaseModel):
     id: UUID
     title: str
     description: str
-    created_date: date
-    updated_date: date
+    created_date: datetime
+    updated_date: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

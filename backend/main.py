@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from database import engine, Base
-from routers import chats, documents, knowledge, auth
+from routers import chats, documents, knowledge, auth, open_web_ui
 
 app = FastAPI(
     title="Internal AI Chat Platform",
@@ -10,11 +10,11 @@ app = FastAPI(
 
 Base.metadata.create_all(bind=engine)
 
+app.include_router(auth.router)
 app.include_router(chats.router)
 app.include_router(documents.router)
 app.include_router(knowledge.router)
-app.include_router(auth.router)
-
+app.include_router(open_web_ui.router)
 
 @app.get("/")
 def read_root():
@@ -24,12 +24,6 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "ok"
-    }
-
-@app.get("/health/openwebui")
-def open_web_ui_health_check():
     return {
         "status": "ok"
     }

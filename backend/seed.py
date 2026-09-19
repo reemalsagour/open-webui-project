@@ -1,8 +1,15 @@
 from datetime import datetime
 from io import BytesIO
+import asyncio
 
 from database import SessionLocal, Base, engine
-from database_models import User, Chat, Message, Document, KnowledgeBase
+from database_models import (
+    User,
+    Chat,
+    Message,
+    Document,
+    KnowledgeBase
+)
 from auth_logic import get_password_hash
 
 from open_web_ui_api import (
@@ -11,6 +18,7 @@ from open_web_ui_api import (
     create_knowledge,
     add_file_to_knowledge
 )
+
 
 # -------------------------
 # Reset database tables
@@ -32,19 +40,6 @@ class SeedFile:
         self.filename = filename
         self.file = BytesIO(content.encode("utf-8"))
         self.content_type = "text/plain"
-
-
-# -------------------------
-# Helper for Open WebUI IDs
-# -------------------------
-
-def get_open_webui_id(response):
-    if "id" not in response:
-        raise Exception(
-            f"Open WebUI did not return an ID: {response}"
-        )
-
-    return response["id"]
 
 
 try:
@@ -121,6 +116,11 @@ try:
 
     db.flush()
 
+
+    # -------------------------
+    # Messages
+    # -------------------------
+
     messages = [
 
         # Fatimah - Docker
@@ -139,7 +139,7 @@ try:
                 "and their dependencies into containers."
             ),
             created_date=datetime(2026, 9, 10),
-            model_name="gemini-3.8-flash",
+            model_name="gemini-3.1-flash-lite",
             chat_id=chat1.id
         ),
 
@@ -161,7 +161,7 @@ try:
                 "using configuration files."
             ),
             created_date=datetime(2026, 9, 11),
-            model_name="gemini-3.8-flash",
+            model_name="gemini-3.1-flash-lite",
             chat_id=chat2.id
         ),
 
@@ -183,7 +183,7 @@ try:
                 "and @app.delete()."
             ),
             created_date=datetime(2026, 9, 12),
-            model_name="gemini-3.8-flash",
+            model_name="gemini-3.1-flash-lite",
             chat_id=chat3.id
         ),
 
@@ -208,7 +208,7 @@ try:
                 "that employees are expected to follow."
             ),
             created_date=datetime(2026, 9, 13),
-            model_name="gemini-3.8-flash",
+            model_name="gemini-3.1-flash-lite",
             chat_id=chat4.id
         )
     ]
@@ -220,13 +220,9 @@ try:
     # Knowledge Base 1
     # -------------------------
 
-    knowledge_response1 = create_knowledge(
+    open_web_ui_knowledge_id1 = create_knowledge(
         name="Company Policies",
         description="Internal company policies and procedures."
-    )
-
-    open_web_ui_knowledge_id1 = get_open_webui_id(
-        knowledge_response1
     )
 
     knowledge1 = KnowledgeBase(
@@ -246,13 +242,9 @@ try:
     # Knowledge Base 2
     # -------------------------
 
-    knowledge_response2 = create_knowledge(
+    open_web_ui_knowledge_id2 = create_knowledge(
         name="Technical Documentation",
         description="Technical documentation for internal projects."
-    )
-
-    open_web_ui_knowledge_id2 = get_open_webui_id(
-        knowledge_response2
     )
 
     knowledge2 = KnowledgeBase(
@@ -285,14 +277,10 @@ for authorized business purposes.
 """
     )
 
-    file_response1 = upload_file(company_policy)
+    open_web_ui_file_id1 = upload_file(company_policy)
 
-    open_web_ui_file_id1 = get_open_webui_id(
-        file_response1
-    )
-
-    wait_for_file_processing(
-        open_web_ui_file_id1
+    asyncio.run(
+        wait_for_file_processing(open_web_ui_file_id1)
     )
 
     add_file_to_knowledge(
@@ -304,8 +292,6 @@ for authorized business purposes.
         name="company-policy.txt",
         created_date=datetime(2026, 9, 2),
         open_web_ui_file_id=open_web_ui_file_id1,
-        chat_id=None,
-        knowledge_id=knowledge1.id,
         user_id=user1.id
     )
 
@@ -328,14 +314,10 @@ in approved systems.
 """
     )
 
-    file_response2 = upload_file(security_policy)
+    open_web_ui_file_id2 = upload_file(security_policy)
 
-    open_web_ui_file_id2 = get_open_webui_id(
-        file_response2
-    )
-
-    wait_for_file_processing(
-        open_web_ui_file_id2
+    asyncio.run(
+        wait_for_file_processing(open_web_ui_file_id2)
     )
 
     add_file_to_knowledge(
@@ -347,8 +329,6 @@ in approved systems.
         name="security-policy.txt",
         created_date=datetime(2026, 9, 3),
         open_web_ui_file_id=open_web_ui_file_id2,
-        chat_id=None,
-        knowledge_id=knowledge1.id,
         user_id=user1.id
     )
 
@@ -371,14 +351,10 @@ infrastructure based on the configuration.
 """
     )
 
-    file_response3 = upload_file(terraform_guide)
+    open_web_ui_file_id3 = upload_file(terraform_guide)
 
-    open_web_ui_file_id3 = get_open_webui_id(
-        file_response3
-    )
-
-    wait_for_file_processing(
-        open_web_ui_file_id3
+    asyncio.run(
+        wait_for_file_processing(open_web_ui_file_id3)
     )
 
     add_file_to_knowledge(
@@ -390,8 +366,6 @@ infrastructure based on the configuration.
         name="terraform-guide.txt",
         created_date=datetime(2026, 9, 6),
         open_web_ui_file_id=open_web_ui_file_id3,
-        chat_id=chat3.id,
-        knowledge_id=knowledge2.id,
         user_id=user2.id
     )
 
@@ -413,22 +387,16 @@ multiple containers together.
 """
     )
 
-    file_response4 = upload_file(docker_notes)
+    open_web_ui_file_id4 = upload_file(docker_notes)
 
-    open_web_ui_file_id4 = get_open_webui_id(
-        file_response4
-    )
-
-    wait_for_file_processing(
-        open_web_ui_file_id4
+    asyncio.run(
+        wait_for_file_processing(open_web_ui_file_id4)
     )
 
     document4 = Document(
         name="docker-notes.txt",
         created_date=datetime(2026, 9, 10),
         open_web_ui_file_id=open_web_ui_file_id4,
-        chat_id=chat1.id,
-        knowledge_id=None,
         user_id=user1.id
     )
 
@@ -444,12 +412,40 @@ multiple containers together.
         document4
     ])
 
+    db.flush()
+
+
+    # -------------------------
+    # Link documents to chats
+    # -------------------------
+
+    chat1.documents.append(document4)
+
+    chat2.documents.append(document3)
+
+    chat3.documents.append(document3)
+
+
+    # -------------------------
+    # Link documents to knowledge bases
+    # -------------------------
+
+    knowledge1.documents.append(document1)
+    knowledge1.documents.append(document2)
+
+    knowledge2.documents.append(document3)
+
 
     # -------------------------
     # Save everything
     # -------------------------
 
     db.commit()
+
+
+    # -------------------------
+    # Print seed information
+    # -------------------------
 
     print("Database reset and seeded successfully!")
 

@@ -49,7 +49,8 @@ class Chat(Base):
     )
     documents: Mapped[List["Document"]] = relationship(
         "Document", 
-        back_populates="chat"
+        secondary="chat_documents",
+        back_populates="chats"
     )
     
 class Message(Base):
@@ -74,24 +75,19 @@ class Document(Base):
     name: Mapped[str]
     created_date: Mapped[datetime]
     open_web_ui_file_id: Mapped[str]
-    chat_id: Mapped[UUID] = mapped_column(
-        ForeignKey("chats.id"),
-        nullable=True
-    )
-    chat: Mapped["Chat"] = relationship(
+    chats = relationship(
         "Chat",
+        secondary="chat_documents",
         back_populates="documents"
-    )  
-    knowledge_id: Mapped[UUID] = mapped_column(
-        ForeignKey("knowledges.id"),
-        nullable=True
     )
-    knowledge_base: Mapped["KnowledgeBase"] = relationship(
+    knowledge_bases = relationship(
         "KnowledgeBase",
+        secondary="knowledge_documents",
         back_populates="documents"
     )
     user_id: Mapped[UUID] = mapped_column(
-            ForeignKey("users.id")
+            ForeignKey("users.id"),
+            nullable=True
         )
     user: Mapped["User"] = relationship(
         "User",
@@ -106,14 +102,42 @@ class KnowledgeBase(Base):
     created_date: Mapped[datetime]
     updated_date: Mapped[datetime]
     open_web_ui_knowledge_id: Mapped[str]
-    documents: Mapped[List["Document"]] = relationship(
-            "Document", 
-            back_populates="knowledge_base"
+    documents = relationship(
+        "Document",
+        secondary="knowledge_documents",
+        back_populates="knowledge_bases"
     )
     user_id: Mapped[UUID] = mapped_column(
-        ForeignKey("users.id")
+        ForeignKey("users.id"),
+        nullable=True
     )
     user: Mapped["User"] = relationship(
         "User",
-        back_populates="knowledge_bases"
+        back_populates="knowledge_bases",
+    )
+    
+class ChatDocument(Base):
+    __tablename__ = "chat_documents"
+
+    chat_id: Mapped[UUID] = mapped_column(
+        ForeignKey("chats.id"),
+        primary_key=True
+    )
+
+    document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("documents.id"),
+        primary_key=True
+    )
+    
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    knowledge_id: Mapped[UUID] = mapped_column(
+        ForeignKey("knowledges.id"),
+        primary_key=True
+    )
+
+    document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("documents.id"),
+        primary_key=True
     )

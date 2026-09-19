@@ -1,32 +1,55 @@
 services:
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - ai-network
-
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
     restart: unless-stopped
-    depends_on:
-      - ollama
     ports:
       - "3000:8080"
-    environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
       - open-webui-data:/app/backend/data
     networks:
       - ai-network
 
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: openwebuiproject
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-network
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - OPEN_WEB_UI_API_KEY=${OPEN_WEB_UI_API_KEY}
+      - OPEN_WEB_UI_API_URL=http://open-webui:8080
+    ports:
+      - "8000:8000"
+    depends_on:
+      - open-webui
+      - db
+    networks:
+        - ai-network
+
 networks:
   ai-network:
 
 volumes:
-  ollama-data:
+  postgres_data:
   open-webui-data:

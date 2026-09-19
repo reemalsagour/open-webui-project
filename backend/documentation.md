@@ -7,9 +7,151 @@ Backend API documentation for the frontend.
 **Database:** PostgreSQL
 **AI / Files / Knowledge:** Open WebUI API
 
+# 0. Backend Setup
+
+Follow these steps before using the API.
+
+## 0.1 Install dependencies
+
+Create and activate a virtual environment, then install the project's dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+## 0.2 Configure environment variables
+
+Copy `.env.example` to `.env` and fill in the required values.
+
+See the [Environment Variables](#10-environment-variables) section for details about each variable.
+
+## 0.3 PostgreSQL connection
+
+Make sure the database connection settings in `.env` are correct.
+
+If you are running the backend with Docker Compose, PostgreSQL is started automatically by Compose.
+
+## 0.4 Create the database tables
+
+Run the Alembic migrations:
+
+```bash
+alembic upgrade head
+```
+
+Alembic is responsible for creating and updating the database schema.
+
+> You only need to run this when setting up the database or when new migrations are added.
+
+## 0.5 Optional: Add sample data
+
+The project includes a seed script for development and testing.
+
+If you are running the backend directly on your computer, run:
+
+```bash
+python seed.py
+```
+
+If you are running the backend using Docker Compose, run the seed **once manually from the backend container**:
+
+```bash
+docker compose exec backend python seed.py
+```
+
+This creates sample users, chats, messages, documents, and knowledge-base data.
+
+> The seed script is optional. You do not need to run it for the backend to start.
+
+> **Important:** The seed script also creates resources in Open WebUI. Avoid running it repeatedly unless you intend to recreate the sample data.
+
+## 0.6 Make sure Open WebUI is running
+
+The backend communicates with Open WebUI for AI responses, documents, and knowledge bases.
+
+Start Open WebUI using the project's Docker Compose setup, then make sure the Open WebUI URL and API key in `.env` are correct.
+
+The default local URL is:
+
+```text
+http://localhost:3000
+```
+
+See the [Environment Variables](#10-environment-variables) section for information about obtaining the Open WebUI API key.
+
+## 0.7 Start the backend
+
+If you are running the backend directly on your computer, run:
+
+```bash
+uvicorn main:app --reload
+```
+
+If you are using Docker Compose, start the backend with:
+
+```bash
+docker compose --env-file ../.env up --build
+```
+
+The backend will be available at:
+
+```text
+http://localhost:8000
+```
+
+FastAPI Swagger documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+The frontend should communicate with the FastAPI backend at:
+
+```text
+Frontend → FastAPI → PostgreSQL
+                    → Open WebUI → Gemini
+```
+
+### Setup Summary
+
+**Running the backend directly:**
+
+```text
+Install dependencies
+        ↓
+Configure .env
+        ↓
+Start PostgreSQL
+        ↓
+Run: alembic upgrade head
+        ↓
+(Optional) Run: python seed.py
+        ↓
+Start Open WebUI
+        ↓
+Run: uvicorn main:app --reload
+        ↓
+Backend ready at http://localhost:8000
+```
+
+**Running the backend with Docker Compose:**
+
+```text
+Configure .env
+        ↓
+Run: docker compose --env-file ../.env up --build
+        ↓
+PostgreSQL + Open WebUI + Backend start
+        ↓
+(Optional) Run:
+docker compose exec backend python seed.py
+        ↓
+Backend ready at http://localhost:8000
+```
+
 ---
 
-## 1. Base URL
+# 1. Base URL
 
 During local development:
 

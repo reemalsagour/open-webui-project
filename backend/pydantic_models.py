@@ -24,11 +24,6 @@ class ChatResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-class ChatDetailResponse(ChatResponse):
-    messages: list[MessageResponse] = []
-    documents: list[DocumentResponse] = []
-
 # Messages
 class MessageCreate(BaseModel):
     role: str
@@ -70,6 +65,10 @@ class KnowledgeBaseResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
+# mixed
 class KnowledgeBaseDetailResponse(KnowledgeBaseResponse):
+    documents: list[DocumentResponse] = []
+    
+class ChatDetailResponse(ChatResponse):
+    messages: list[MessageResponse] = []
     documents: list[DocumentResponse] = []

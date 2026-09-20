@@ -43,3 +43,51 @@ variable "allowed_web_cidr" {
   description = "IP address allowed to access Open WebUI"
   type        = string
 }
+
+variable "postgresql_server_name" {
+  description = "Azure PostgreSQL Flexible Server name"
+  type        = string
+  default     = "psql-openwebui"
+}
+
+variable "postgresql_database_name" {
+  description = "Open WebUI PostgreSQL database name"
+  type        = string
+  default     = "openwebui"
+}
+
+variable "postgresql_version" {
+  description = "PostgreSQL major version"
+  type        = string
+  default     = "18"
+}
+
+variable "postgresql_admin_username" {
+  description = "PostgreSQL administrator username"
+  type        = string
+  default     = "openwebuiadmin"
+}
+
+variable "postgresql_admin_password" {
+  description = "PostgreSQL administrator password"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgresql_storage_mb" {
+  description = "PostgreSQL storage size in MB"
+  type        = number
+  default     = 32768
+}
+
+variable "postgresql_sku_name" {
+  description = "PostgreSQL Flexible Server SKU"
+  type        = string
+  default     = "B_Standard_B1ms"
+}
+
+variable "postgresql_backup_retention_days" {
+  description = "PostgreSQL backup retention period"
+  type        = number
+  default     = 7
+}

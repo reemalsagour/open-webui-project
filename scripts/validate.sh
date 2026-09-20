@@ -23,8 +23,14 @@ echo "[3] Container status"
 docker compose ps
 
 echo ""
-echo "[4] Ollama models"
-docker exec ollama ollama list
+echo "[4] Gemini API configuration"
+
+if [ -f .env ] && grep -q "^GEMINI_API_KEY=" .env; then
+    echo "Gemini API key configuration found."
+else
+    echo "ERROR: Gemini API key configuration not found."
+    exit 1
+fi
 
 echo ""
 echo "[5] Open WebUI health check"
@@ -34,4 +40,5 @@ echo ""
 echo ""
 echo "======================================"
 echo " Validation completed"
+echo " Provider: Google Gemini API"
 echo "======================================"

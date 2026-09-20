@@ -17,3 +17,16 @@ allowed_ssh_cidr = "YOUR_PUBLIC_IP/32"
 
 # PLACEHOLDER: Replace with the public IP address that should be allowed to access Open WebUI.
 allowed_web_cidr = "YOUR_PUBLIC_IP/32"
+
+postgresql_server_name           = "psql-openwebui-project"
+postgresql_database_name         = "openwebui"
+postgresql_version               = "18"
+
+postgresql_admin_username = "openwebuiadmin"
+
+# PLACEHOLDER
+postgresql_admin_password = "YOUR_POSTGRESQL_PASSWORD_HERE"
+
+postgresql_storage_mb            = 32768
+postgresql_sku_name              = "B_Standard_B1ms"
+postgresql_backup_retention_days = 7

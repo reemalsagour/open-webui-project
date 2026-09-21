@@ -9,149 +9,99 @@ Backend API documentation for the frontend.
 
 # 0. Backend Setup
 
-Follow these steps before using the API.
+Follow these steps to run the backend using Docker Compose.
 
-## 0.1 Install dependencies
+## 0.1 Create the `.env` File
 
-Create and activate a virtual environment, then install the project's dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-## 0.2 Configure environment variables
-
-Copy `.env.example` to `.env` and fill in the required values.
-
-See the [Environment Variables](#10-environment-variables) section for details about each variable.
-
-## 0.3 PostgreSQL connection
-
-Make sure the database connection settings in `.env` are correct.
-
-If you are running the backend with Docker Compose, PostgreSQL is started automatically by Compose.
-
-## 0.4 Create the database tables
-
-Run the Alembic migrations:
-
-If you are running the backend directly on your computer, run:
-```bash
-alembic upgrade head
-```
-
-If you are running the backend using Docker Compose, run:
-```bash
- docker compose --env-file "../.env" exec backend alembic upgrade head
-```
-
-Alembic is responsible for creating and updating the database schema.
-
-> You only need to run this when setting up the database or when new migrations are added.
-
-## 0.5 Add sample data
-
-The project includes a seed script for development and testing.
-
-If you are running the backend directly on your computer, run:
-
-```bash
-python seed.py
-```
-
-If you are running the backend using Docker Compose, run the seed **once manually from the backend container**:
-
-```bash
-docker compose --env-file "../.env" exec backend python seed.py
-```
-
-This creates sample users, chats, messages, documents, and knowledge-base data.
-
-> **Important:** The seed script also creates resources in Open WebUI. Avoid running it repeatedly unless you intend to recreate the sample data.
-
-## 0.6 Make sure Open WebUI is running
-
-The backend communicates with Open WebUI for AI responses, documents, and knowledge bases.
-
-Start Open WebUI using the project's Docker Compose setup, then make sure the Open WebUI URL and API key in `.env` are correct.
-
-The default local URL is:
+Copy `.env.example` and rename the copy to:
 
 ```text
-http://localhost:3000
+.env
 ```
 
-See the [Environment Variables](#10-environment-variables) section for information about obtaining the Open WebUI API key.
+Open `.env` and fill in the values that need to be configured:
 
-## 0.7 Start the backend
+* **PostgreSQL password**
+* **JWT secret key**
+* **Gemini API key**
+* **Open webui admin email**
+* **Open webui admin password**
 
-If you are running the backend directly on your computer, run:
+Instructions for obtaining these values are provided in the backend documentation [Environment Variables](#10-environment-variables) section .
+
+---
+
+## 0.2 Open the Docker Directory
+
+Open a terminal and navigate to the project's `docker` directory:
 
 ```bash
-uvicorn main:app --reload
+cd docker
 ```
 
-If you are using Docker Compose, start the backend with:
+---
+
+## 0.3 Start the Docker Services
+
+Start the backend, PostgreSQL, and Open WebUI services:
 
 ```bash
 docker compose --env-file "../.env" up -d
 ```
 
-The backend will be available at:
+The `-d` option runs the containers in the background.
+
+---
+
+## 0.4 Sample Login Credentials
+
+The seed creates the following sample user among others:
 
 ```text
-http://localhost:8000
+Username: fatimah
+Password: password
 ```
 
-FastAPI Swagger documentation:
+These credentials can be used to test the authentication and chat functionality.
+
+---
+
+## 0.5 Test the Backend
+
+Open the FastAPI Swagger documentation in your browser:
 
 ```text
 http://localhost:8000/docs
 ```
 
-The frontend should communicate with the FastAPI backend at:
+1. Click **Authorize**.
+2. Enter the seeded username and password.
+3. Authenticate.
+4. Try some of the available routes, such as:
+
+   * Authentication
+   * Chats
+   * Documents
+   * Knowledge Bases
+   * Open WebUI
+5. Test a chat request to verify that the backend can communicate with Open WebUI and the configured AI model.
+
+If the Swagger page loads and the routes respond successfully, the backend is running correctly.
+
+## Backend Docker Setup Summary
 
 ```text
-Frontend → FastAPI → PostgreSQL
-                    → Open WebUI → Gemini
-```
-
-### Setup Summary
-
-**Running the backend directly:**
-
-```text
-Install dependencies
-        ↓
-Configure .env
-        ↓
-Start PostgreSQL
-        ↓
-Run: alembic upgrade head
-        ↓
-Run: python seed.py
-        ↓
-Start Open WebUI
-        ↓
-Run: uvicorn main:app --reload
-        ↓
-Backend ready at http://localhost:8000
-```
-
-**Running the backend with Docker Compose:**
-
-```text
-Configure .env
-        ↓
-Run: docker compose --env-file ../.env up --build
-        ↓
-PostgreSQL + Open WebUI + Backend start
-        ↓
-Run: docker compose --env-file "../.env" exec backend alembic upgrade head
-        ↓
-Run: docker compose --env-file "../.env" exec backend python seed.py
-        ↓
-Backend ready at http://localhost:8000
+.env
+  │
+  ▼
+docker compose up -d
+  │
+  ├── PostgreSQL
+  ├── Open WebUI
+  └── FastAPI Backend
+          │
+          ▼
+   http://localhost:8000/docs
 ```
 
 ---
@@ -418,12 +368,12 @@ Creates a new chat and sends the first message.
 | --------------- | ------ | -------- | ------------------------------------------ |
 | `file_ids`      | UUID   | No       | Documents to use for the chat              |
 | `knowledge_ids` | UUID   | No       | Knowledge bases to use                     |
-| `model`         | string | No       | AI model. Default: `gemini-3.1-flash-lite` |
+| `model`         | string | Yes       | AI model. get a valid model name from the /openwebui/models. Reliable models list [Reliable models list](#reliable--free-gemini-models) |
 
 Example:
 
 ```text
-POST /chats/?model=gemini-3.1-flash-lite
+POST /chats/?model=models/gemini-3.1-flash-lite
 ```
 
 For multiple documents:
@@ -559,7 +509,6 @@ Sends a new message to an existing chat.
 ```text
 file_ids
 knowledge_ids
-model
 ```
 
 Example:
@@ -1092,15 +1041,17 @@ copy the `.env.example`
 
 ```env
 POSTGRES_PASSWORD=your_postgres_password
+DB_URL=localhost:543
 
 JWT_SECRET_KEY=your_jwt_secret_key
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-GEMENI_API_KEY=your_gemini_api_key
+GEMINI_API_KEY=your_gemini_api_key
 
-OPEN_WEB_UI_API_KEY=your_open_web_ui_api_key
 OPEN_WEB_UI_API_URL=http://localhost:3000
+OPENWEBUI_ADMIN_EMAIL=admin@example.com
+OPENWEBUI_ADMIN_PASSWORD=your_password
 ```
 
 ## Where to obtain each value
@@ -1108,14 +1059,14 @@ OPEN_WEB_UI_API_URL=http://localhost:3000
 | Variable                      | Purpose                            | Obtain from                                               |
 | ----------------------------- | ---------------------------------- | --------------------------------------------------------- |
 | `POSTGRES_PASSWORD`           | PostgreSQL database password       | `Your Postgres password that you use to connect to postgres in psql`      |
+| `DB_URL`           | PostgreSQL database url       | `localhost:5432`      |
 | `JWT_SECRET_KEY`              | Secret used to sign JWT tokens     | `https://jwtsecretkeygenerator.com/` |
 | `JWT_ALGORITHM`               | JWT signing algorithm              | `HS256`                                                   |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime                     | `1440`                                     |
-| `GEMENI_API_KEY`              | Gemini API key                     | `https://aistudio.google.com/api-keys`                      |
-| `OPEN_WEB_UI_API_KEY`         | Authentication for Open WebUI API  | `After starting Docker Compose, open Open WebUI at \http://localhost:3000\ → register/login → Settings → Authentication → enable API Keys if needed → Accounts → copy your API key.`    |
-| `OPEN_WEB_UI_API_URL`         | Address of the Open WebUI instance | `http://localhost:3000`                             |
-
-> **Note:** The variable is currently named `GEMENI_API_KEY` in the project's `.env`. Also, the backend code currently shown does not directly use this variable; Gemini is accessed through Open WebUI.
+| `GEMINI_API_KEY`              | Gemini API key                     | `https://aistudio.google.com/api-keys`                      |
+|`OPEN_WEB_UI_API_URL`          | Address of the Open WebUI instance | `http://localhost:3000`       
+| `OPENWEBUI_ADMIN_EMAIL`         | Open web ui admin email | `Whatever email you want`       |
+| `OPENWEBUI_ADMIN_PASSWORD`         | open web ui admin passwordinstance | `Whatever password you want`  |
 
 ---
 
@@ -1205,6 +1156,17 @@ The list and detail endpoints allow users to see these shared resources.
 The frontend should not communicate directly with Open WebUI.
 
 All Open WebUI communication goes through FastAPI.
+
+### Reliable & Free Gemini Models
+
+The following Gemini models have consistently returned responses during testing while remaining available on the free tier:
+
+* `gemini-3.1-flash-lite`
+* `gemini-3.5-flash-lite`
+* `gemini-3.5-flash`
+
+> **Note:** Model IDs may change over time. To get the currently available model IDs, use the `/openwebui/models` route and pass the exact ID returned by the endpoint to the chat endpoint.
+
 
 ---
 

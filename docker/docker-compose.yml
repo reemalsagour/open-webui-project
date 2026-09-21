@@ -5,13 +5,27 @@ services:
     container_name: open-webui
     restart: unless-stopped
     environment:
-      - ENV=dev
+    - ENV=dev
+    - WEBUI_ADMIN_EMAIL=${OPENWEBUI_ADMIN_EMAIL}
+    - WEBUI_ADMIN_PASSWORD=${OPENWEBUI_ADMIN_PASSWORD}
+    - WEBUI_ADMIN_NAME=Admin
+    - ENABLE_API_KEYS=true
+    - ENABLE_OPENAI_API=true
+    - OPENAI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+    - OPENAI_API_KEY=${GEMINI_API_KEY}
+    - ENABLE_OLLAMA_API=false
     ports:
       - "3000:8080"
     volumes:
       - open-webui-data:/app/backend/data
     networks:
       - ai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   db:
     image: postgres:17
@@ -24,6 +38,25 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d openwebuiproject"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  setup-openwebui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.setup-open-webui
+    environment:
+      - OPENWEBUI_ADMIN_EMAIL=${OPENWEBUI_ADMIN_EMAIL}
+      - OPENWEBUI_ADMIN_PASSWORD=${OPENWEBUI_ADMIN_PASSWORD}
+    volumes:
+      - open-webui-api-key:/shared
+    depends_on:
+      - open-webui
     networks:
       - ai-network
 
@@ -39,14 +72,19 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - JWT_ALGORITHM=${JWT_ALGORITHM}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
-      - OPEN_WEB_UI_API_KEY=${OPEN_WEB_UI_API_KEY}
       - OPEN_WEB_UI_API_URL=http://open-webui:8080
       - DB_URL=db:5432
     ports:
       - "8000:8000"
+    volumes:
+      - open-webui-api-key:/shared:ro
     depends_on:
-      - open-webui
-      - db
+      db:
+        condition: service_healthy
+      open-webui:
+        condition: service_started
+      setup-openwebui:
+        condition: service_completed_successfully
     networks:
         - ai-network
 
@@ -56,3 +94,4 @@ networks:
 volumes:
   postgres_data:
   open-webui-data:
+  open-webui-api-key:

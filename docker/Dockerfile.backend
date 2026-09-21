@@ -8,4 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY setup-openwebui/start-backend.sh /app/start-backend.sh
+
+RUN chmod +x /app/start-backend.sh
+
+CMD ["/app/start-backend.sh", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

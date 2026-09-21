@@ -7,8 +7,12 @@ import asyncio
 
 load_dotenv()
 
-open_web_ui_api_key = os.getenv('OPEN_WEB_UI_API_KEY')
 open_web_ui_api_url = os.getenv('OPEN_WEB_UI_API_URL')
+try:
+    with open('/shared/openwebui_api_key', 'r') as file:
+        open_web_ui_api_key = file.read().strip()
+except FileNotFoundError:
+    open_web_ui_api_key = os.getenv('OPEN_WEB_UI_API_KEY')
 
 #######################
 #   helper functions  #
@@ -31,6 +35,8 @@ def make_open_web_ui_request(method, url, headers=None, timeout=60, **kwargs):
         )
 
     if response.status_code != 200:
+        print("OPEN WEB UI STATUS:", response.status_code)
+        print("OPEN WEB UI RESPONSE:", response.text)
         raise HTTPException(
             status_code=502,
             detail="The AI service is currently unavailable."

@@ -64,10 +64,10 @@ def update_chat_name(chat_id: UUID,
 
 
 @router.post("/", status_code=201, response_model=ChatMessageResponse)
-def create_a_chat_and_send_message( message: MessageCreate, 
+def create_a_chat_and_send_message( model: str,
+                                   message: MessageCreate, 
                                    file_ids: list[UUID] | None = None , 
                                    knowledge_ids: list[UUID] | None = None, 
-                                   model = 'gemini-3.1-flash-lite', 
                                    db: Session = Depends(get_db), 
                                    current_user: User = Depends(get_current_user)):
     title = message.content[:50]
@@ -168,11 +168,11 @@ def delete_chat_by_id(chat_id: UUID,
 
 @router.post("/{chat_id}/messages", response_model=MessageResponse)
 def send_a_chat_message_to_an_existing_chat(chat_id: UUID,
+                                            model: str,
                                             message: MessageCreate, 
                                             db: Session = Depends(get_db),
                                             file_ids: list[UUID] | None = None, 
                                             knowledge_ids: list[UUID] | None = None,
-                                            model = 'gemini-3.1-flash-lite',
                                             current_user: User = Depends(get_current_user)):
     chat = db.query(Chat).filter(Chat.user_id == current_user.id, Chat.id == chat_id).first()
     if chat is None:

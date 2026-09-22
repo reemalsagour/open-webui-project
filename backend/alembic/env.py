@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 import os
 from dotenv import load_dotenv
-from database import Base
+from database import Base, DATABASE_URL
 from database_models import User, Chat, Message, Document, KnowledgeBase, ChatDocument, KnowledgeDocument
 
 # this is the Alembic Config object, which provides
@@ -15,12 +15,8 @@ config = context.config
 
 load_dotenv()
 
-database_url = (
-    f"postgresql://postgres:{os.getenv('POSTGRES_PASSWORD')}"
-    f"@{os.getenv('DB_URL')}/openwebuiproject"
-)
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
-config.set_main_option("sqlalchemy.url", database_url)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:

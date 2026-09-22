@@ -50,6 +50,7 @@ resource "azurerm_postgresql_flexible_server" "open_webui" {
   name                = var.postgresql_server_name
   resource_group_name = azurerm_resource_group.open_webui.name
   location            = azurerm_resource_group.open_webui.location
+  zone = "2"
 
   version = var.postgresql_version
 

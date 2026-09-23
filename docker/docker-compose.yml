@@ -57,7 +57,6 @@ services:
       - POSTGRES_USER=openwebuiadmin
       - POSTGRES_DB=openwebui
       - POSTGRES_HOST=${POSTGRES_HOST}
-      - OPEN_WEB_UI_API_KEY=${OPEN_WEB_UI_API_KEY}
     ports:
       - "8000:8000"
     volumes:

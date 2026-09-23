@@ -19,13 +19,7 @@ Copy `.env.example` and rename the copy to:
 .env
 ```
 
-Open `.env` and fill in the values that need to be configured:
-
-* **PostgreSQL password**
-* **JWT secret key**
-* **Gemini API key**
-* **Open webui admin email**
-* **Open webui admin password**
+Open `.env` and fill in the values that need to be:
 
 Instructions for obtaining these values are provided in the backend documentation [Environment Variables](#10-environment-variables) section .
 
@@ -43,10 +37,10 @@ cd docker
 
 ## 0.3 Start the Docker Services
 
-Start the backend, PostgreSQL, and Open WebUI services:
+Start the dev docker backend, PostgreSQL, and Open WebUI services for local development:
 
 ```bash
-docker compose --env-file "../.env" up -d
+docker compose --env-file "../.env"  -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 ```
 
 The `-d` option runs the containers in the background.
@@ -1059,7 +1053,9 @@ OPENWEBUI_ADMIN_PASSWORD=your_password
 | Variable                      | Purpose                            | Obtain from                                               |
 | ----------------------------- | ---------------------------------- | --------------------------------------------------------- |
 | `POSTGRES_PASSWORD`           | PostgreSQL database password       | `Your Postgres password that you use to connect to postgres in psql`      |
-| `DB_URL`           | PostgreSQL database url       | `localhost:5432`      |
+| `POSTGRES_HOST`           | PostgreSQL database host       | `localhost:5432 or the azure postgres host`      |
+| `POSTGRES_USER`           | PostgreSQL database user       | `openwebuiadmin`      |
+| `POSTGRES_DB`           | PostgreSQL database host       | openwebui      |
 | `JWT_SECRET_KEY`              | Secret used to sign JWT tokens     | `https://jwtsecretkeygenerator.com/` |
 | `JWT_ALGORITHM`               | JWT signing algorithm              | `HS256`                                                   |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime                     | `1440`                                     |

@@ -1,0 +1,37 @@
+services:
+
+  db:
+    image: postgres:17
+    container_name: openwebui-project-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: openwebuiproject
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+    networks:
+      - ai-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d openwebuiproject"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: openwebuiproject
+      POSTGRES_HOST: db
+      POSTGRES_SSL: disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+volumes:
+  postgres_dev_data:

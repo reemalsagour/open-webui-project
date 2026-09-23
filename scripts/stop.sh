@@ -5,7 +5,7 @@ set -e
 PROJECT_DIR="$HOME/open-webui-project/docker"
 
 echo "======================================"
-echo " Project 10 - Stopping Open WebUI"
+echo " Stopping Open WebUI"
 echo "======================================"
 
 cd "$PROJECT_DIR"

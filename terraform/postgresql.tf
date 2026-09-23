@@ -1,7 +1,3 @@
-# ------------------------------------------------------------
-# Dedicated subnet for PostgreSQL
-# ------------------------------------------------------------
-
 resource "azurerm_subnet" "postgresql" {
   name                 = "snet-postgresql"
   resource_group_name  = azurerm_resource_group.open_webui.name
@@ -22,18 +18,10 @@ resource "azurerm_subnet" "postgresql" {
   }
 }
 
-# ------------------------------------------------------------
-# Private DNS zone
-# ------------------------------------------------------------
-
 resource "azurerm_private_dns_zone" "postgresql" {
   name                = "openwebui.postgres.database.azure.com"
   resource_group_name = azurerm_resource_group.open_webui.name
 }
-
-# ------------------------------------------------------------
-# Link PostgreSQL private DNS zone to the VNet
-# ------------------------------------------------------------
 
 resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
   name                  = "openwebui-postgresql-dns-link"
@@ -41,10 +29,6 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
   private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
   virtual_network_id    = azurerm_virtual_network.open_webui.id
 }
-
-# ------------------------------------------------------------
-# PostgreSQL Flexible Server
-# ------------------------------------------------------------
 
 resource "azurerm_postgresql_flexible_server" "open_webui" {
   name                = var.postgresql_server_name
@@ -72,10 +56,6 @@ resource "azurerm_postgresql_flexible_server" "open_webui" {
     azurerm_private_dns_zone_virtual_network_link.postgresql
   ]
 }
-
-# ------------------------------------------------------------
-# Open WebUI database
-# ------------------------------------------------------------
 
 resource "azurerm_postgresql_flexible_server_database" "open_webui" {
   name      = var.postgresql_database_name

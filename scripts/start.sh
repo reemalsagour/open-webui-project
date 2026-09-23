@@ -5,15 +5,20 @@ set -e
 PROJECT_DIR="$HOME/open-webui-project/docker"
 
 echo "======================================"
-echo " Project 10 - Starting Open WebUI"
+echo " Starting Open WebUI"
 echo "======================================"
 
 cd "$PROJECT_DIR"
 
-if [ ! -f .env ]; then
-    echo "ERROR: .env file not found."
-    echo "Please create $PROJECT_DIR/.env before starting."
+if [ ! -f ../.env ]; then
+    echo "ERROR: .env file not found at $HOME/open-webui-project/.env"
+    echo "Please create it before starting."
     exit 1
+fi
+
+if [ ! -L .env ]; then
+    echo "Creating .env symlink for Docker Compose..."
+    ln -s ../.env .env
 fi
 
 echo ""

@@ -5,7 +5,7 @@ set -e
 PROJECT_DIR="$HOME/open-webui-project/docker"
 
 echo "======================================"
-echo " Project 10 - Application Cleanup"
+echo " Application Cleanup"
 echo "======================================"
 
 cd "$PROJECT_DIR"

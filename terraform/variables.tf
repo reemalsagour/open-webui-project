@@ -91,3 +91,21 @@ variable "postgresql_backup_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "gemini_api_key" {
+  description = "Google Gemini API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "jwt_secret_key" {
+  description = "JWT signing secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "openwebui_admin_password" {
+  description = "Open WebUI admin password"
+  type        = string
+  sensitive   = true
+}

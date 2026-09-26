@@ -124,4 +124,8 @@ resource "azurerm_linux_virtual_machine" "open_webui" {
     application = "Open-WebUI"
     environment = "development"
   }
+
+  identity {
+    type = "SystemAssigned"
+  }
 }

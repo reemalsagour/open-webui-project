@@ -40,26 +40,32 @@ sudo systemctl enable docker
 sudo systemctl start docker
 
 echo ""
-echo "[5] Checking environment configuration..."
+echo "[5] Pulling secrets from Azure Key Vault..."
+
+VAULT_NAME="kv-openwebui-project"
+
+az login --identity >/dev/null
+
+POSTGRES_PASSWORD=$(az keyvault secret show --vault-name "$VAULT_NAME" --name postgres-password --query value -o tsv)
+GEMINI_API_KEY=$(az keyvault secret show --vault-name "$VAULT_NAME" --name gemini-api-key --query value -o tsv)
+JWT_SECRET_KEY=$(az keyvault secret show --vault-name "$VAULT_NAME" --name jwt-secret-key --query value -o tsv)
+OPENWEBUI_ADMIN_PASSWORD=$(az keyvault secret show --vault-name "$VAULT_NAME" --name openwebui-admin-password --query value -o tsv)
+
+cat > "$HOME/open-webui-project/.env" << EOF
+POSTGRES_USER=openwebuiadmin
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+POSTGRES_HOST=psql-openwebui-project.postgres.database.azure.com
+POSTGRES_DB=openwebui
+GEMINI_API_KEY=${GEMINI_API_KEY}
+JWT_SECRET_KEY=${JWT_SECRET_KEY}
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+OPENWEBUI_ADMIN_EMAIL=admin@yourcompany.com
+OPENWEBUI_ADMIN_PASSWORD=${OPENWEBUI_ADMIN_PASSWORD}
+EOF
+
 cd "$PROJECT_DIR"
-
-if [ ! -f ../.env ]; then
-    echo "ERROR: .env file not found at $HOME/open-webui-project/.env"
-    exit 1
-fi
-
-REQUIRED_VARS=(GEMINI_API_KEY POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_DB JWT_SECRET_KEY OPENWEBUI_ADMIN_EMAIL OPENWEBUI_ADMIN_PASSWORD)
-MISSING=0
-for VAR in "${REQUIRED_VARS[@]}"; do
-    if ! grep -q "^${VAR}=.\+" ../.env; then
-        echo "ERROR: $VAR is missing or empty in .env"
-        MISSING=1
-    fi
-done
-if [ "$MISSING" -eq 1 ]; then
-    exit 1
-fi
-echo "All required environment variables are present."
+echo ".env file generated from Key Vault."
 
 echo ""
 echo "[6] Linking .env for Docker Compose..."

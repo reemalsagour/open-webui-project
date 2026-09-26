@@ -30,3 +30,7 @@ postgresql_admin_password = "YOUR_POSTGRESQL_PASSWORD_HERE"
 postgresql_storage_mb            = 32768
 postgresql_sku_name              = "B_Standard_B1ms"
 postgresql_backup_retention_days = 7
+
+gemini_api_key           = "YOUR_GEMINI_API_KEY_HERE"
+jwt_secret_key           = "YOUR_JWT_SECRET_KEY_HERE"
+openwebui_admin_password = "YOUR_ADMIN_PASSWORD_HERE"

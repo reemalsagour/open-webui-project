@@ -867,9 +867,8 @@ if st.session_state["logged_in"]:
             # يجب أن تحتوي هذه القائمة فقط على الموديلات
             # المعتمدة في المشروع.
             APPROVED_MODELS = [
-                "gemini-3.1-flash-lite",
-                "gemini-3.5-flash-lite",
-                "gemini-3.5-flash",
+                "models/gemini-3.5-flash-lite",
+                "models/gemini-3.5-flash",
             ]
 
             available_models = []

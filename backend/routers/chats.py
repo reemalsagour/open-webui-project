@@ -195,7 +195,14 @@ def send_a_chat_message_to_an_existing_chat(chat_id: UUID,
                 Document.id.in_(file_ids)
             ).all()
 
-            chat.documents.extend(documents)
+            existing_document_ids = {
+                document.id for document in chat.documents
+            }
+
+            for document in documents:
+                if document.id not in existing_document_ids:
+                    chat.documents.append(document)
+                    existing_document_ids.add(document.id)
                     
         message_history_array = []    
         for messages in chat.messages:
@@ -206,12 +213,12 @@ def send_a_chat_message_to_an_existing_chat(chat_id: UUID,
                 }
             )
         
-            message_history_array.append(
-                {
-                    "role": "user",
-                    "content": message.content
-                }
-            )
+        message_history_array.append(
+            {
+                "role": "user",
+                "content": message.content
+            }
+        )
                 
         response = chat_with_model(
             message_history_array, 

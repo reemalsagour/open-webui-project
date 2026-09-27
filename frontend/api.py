@@ -1,11 +1,14 @@
 import requests
-
+import os
 
 # =========================================================
 # API CONFIGURATION
 # =========================================================
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.getenv(
+    "BACKEND_URL",
+    "http://localhost:8000"
+)
 
 # =========================================================
 # HELPER FUNCTIONS
@@ -126,20 +129,24 @@ def create_chat(
         "model": model
     }
 
+    body = {
+        "message": {
+            "role": "user",
+            "content": message
+        }
+    }
+    
     if file_ids:
-        params["file_ids"] = file_ids
+        body["file_ids"] = file_ids
 
     if knowledge_ids:
-        params["knowledge_ids"] = knowledge_ids
+        body["knowledge_ids"] = knowledge_ids
 
     response = requests.post(
         f"{BASE_URL}/chats/",
         headers=auth_headers(token),
         params=params,
-        json={
-            "role": "user",
-            "content": message
-        },
+        json=body,
         timeout=60
     )
 
@@ -162,20 +169,24 @@ def send_message(
         "model": model
     }
 
+    body = {
+           "message": {
+               "role": "user",
+               "content": message
+           }
+       }
+       
     if file_ids:
-        params["file_ids"] = file_ids
+        body["file_ids"] = file_ids
 
     if knowledge_ids:
-        params["knowledge_ids"] = knowledge_ids
+        body["knowledge_ids"] = knowledge_ids
 
     response = requests.post(
         f"{BASE_URL}/chats/{chat_id}/messages",
         headers=auth_headers(token),
         params=params,
-        json={
-            "role": "user",
-            "content": message
-        },
+        json=body,
         timeout=60
     )
 

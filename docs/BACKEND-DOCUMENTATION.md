@@ -351,12 +351,20 @@ Creates a new chat and sends the first message.
 
 ```json
 {
-  "role": "user",
-  "content": "What is our vacation policy?"
+  "message": {
+    "role": "string",
+    "content": "string"
+  },
+  "file_ids": [
+    "string"
+  ],
+  "knowledge_ids": [
+    "string"
+  ]
 }
 ```
 
-### Optional Query Parameters
+### Optional Query Parameters/Body
 
 | Parameter       | Type   | Required | Description                                |
 | --------------- | ------ | -------- | ------------------------------------------ |
@@ -364,23 +372,6 @@ Creates a new chat and sends the first message.
 | `knowledge_ids` | UUID   | No       | Knowledge bases to use                     |
 | `model`         | string | Yes       | AI model. get a valid model name from the /openwebui/models. Reliable models list [Reliable models list](#reliable--free-gemini-models) |
 
-Example:
-
-```text
-POST /chats/?model=models/gemini-3.1-flash-lite
-```
-
-For multiple documents:
-
-```text
-POST /chats/?file_ids=UUID1&file_ids=UUID2
-```
-
-For multiple knowledge bases:
-
-```text
-POST /chats/?knowledge_ids=UUID1&knowledge_ids=UUID2
-```
 
 ### Response
 
@@ -493,22 +484,24 @@ Sends a new message to an existing chat.
 
 ```json
 {
-  "role": "user",
-  "content": "Can you explain this policy?"
+  "message": {
+    "role": "string",
+    "content": "string"
+  },
+  "file_ids": [
+    "string"
+  ],
+  "knowledge_ids": [
+    "string"
+  ]
 }
 ```
 
-### Optional Query Parameters
+### Optional Body
 
 ```text
 file_ids
 knowledge_ids
-```
-
-Example:
-
-```text
-POST /chats/CHAT_UUID/messages?model=gemini-3.1-flash-lite
 ```
 
 ### Response

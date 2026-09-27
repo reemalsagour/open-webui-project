@@ -68,6 +68,30 @@ services:
         condition: service_completed_successfully
     networks:
         - ai-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - FRONTEND_TEST_MODE=false
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ai-network
 
 networks:
   ai-network:

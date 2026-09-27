@@ -39,6 +39,23 @@ st.set_page_config(
 )
 
 
+# Compact spacing for the chat interface.
+# تقليل المسافات في واجهة المحادثة.
+st.markdown(
+    """
+    <style>
+    div[data-testid="stVerticalBlock"] {
+        gap: 0.65rem;
+    }
+    div[data-testid="stChatInput"] {
+        margin-top: 0.25rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # =========================================================
 # SESSION STATE
 # حالة الجلسة
@@ -92,6 +109,28 @@ if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
 
+# Restore the JWT from the URL after a browser refresh.
+# استعادة رمز الدخول من الرابط بعد تحديث الصفحة.
+#
+# Note: this is a frontend persistence fallback. For production,
+# an HttpOnly secure cookie is preferable when backend support exists.
+if not TEST_MODE and not st.session_state["access_token"]:
+    saved_token = st.query_params.get("session_token")
+
+    if saved_token:
+        try:
+            user_response = get_current_user(saved_token)
+
+            if user_response.status_code == 200:
+                st.session_state["access_token"] = saved_token
+                st.session_state["logged_in"] = True
+            else:
+                st.query_params.pop("session_token", None)
+
+        except Exception:
+            pass
+
+
 # Controls the currently displayed page.
 # يحدد الصفحة المعروضة حالياً.
 if "current_page" not in st.session_state:
@@ -114,6 +153,18 @@ if "chats" not in st.session_state:
 # يخزن معرف المحادثة الحالية.
 if "current_chat_id" not in st.session_state:
     st.session_state["current_chat_id"] = None
+
+
+# Stores the title of the currently opened chat.
+# يخزن عنوان المحادثة المفتوحة حالياً.
+if "current_chat_title" not in st.session_state:
+    st.session_state["current_chat_title"] = "New Chat"
+
+
+# Stores persistent UI notifications across reruns.
+# يخزن رسائل الواجهة حتى لا تختفي مباشرة بعد إعادة التشغيل.
+if "flash_message" not in st.session_state:
+    st.session_state["flash_message"] = None
 
 
 # Stores documents temporarily when backend is unavailable.
@@ -200,6 +251,78 @@ def extract_chat_id(data):
     )
 
 
+def normalize_list_response(data, *keys):
+    """
+    Return a list from either a direct list response or a wrapped response.
+
+    إعادة قائمة سواء كانت الاستجابة قائمة مباشرة
+    أو موجودة داخل مفتاح في قاموس.
+    """
+    if isinstance(data, list):
+        return data
+
+    if isinstance(data, dict):
+        for key in keys:
+            value = data.get(key)
+            if isinstance(value, list):
+                return value
+
+    return []
+
+
+def refresh_chat_messages(token, chat_id):
+    """
+    Reload a chat from the backend so the newest AI response
+    appears immediately after sending a message.
+
+    إعادة تحميل المحادثة من الباك إند حتى يظهر
+    أحدث رد للذكاء الاصطناعي مباشرة.
+    """
+    response = get_chat(token, chat_id)
+
+    if response.status_code != 200:
+        return False
+
+    data = response.json()
+
+    if not isinstance(data, dict):
+        return False
+
+    st.session_state["messages"] = data.get("messages", [])
+
+    title = data.get("title")
+    if title:
+        st.session_state["current_chat_title"] = title
+
+    return True
+
+
+def show_flash_message():
+    """
+    Display a stored success/error message once after rerun.
+
+    عرض رسالة نجاح أو خطأ محفوظة بعد إعادة التشغيل.
+    """
+    flash = st.session_state.get("flash_message")
+
+    if not flash:
+        return
+
+    message_type = flash.get("type", "info")
+    message_text = flash.get("text", "")
+
+    if message_type == "success":
+        st.success(message_text)
+    elif message_type == "error":
+        st.error(message_text)
+    elif message_type == "warning":
+        st.warning(message_text)
+    else:
+        st.info(message_text)
+
+    st.session_state["flash_message"] = None
+
+
 # =========================================================
 # LOGGED-IN APPLICATION
 # التطبيق بعد تسجيل الدخول
@@ -228,6 +351,7 @@ if st.session_state["logged_in"]:
 
             st.session_state["messages"] = []
             st.session_state["current_chat_id"] = None
+            st.session_state["current_chat_title"] = "New Chat"
             st.session_state["current_page"] = "chat"
 
             st.rerun()
@@ -388,6 +512,12 @@ if st.session_state["logged_in"]:
                                                 "current_chat_id"
                                             ] = chat_id
 
+                                            st.session_state[
+                                                "current_chat_title"
+                                            ] = (
+                                                chat_data.get("title")
+                                                or chat_title
+                                            )
 
                                             st.session_state[
                                                 "current_page"
@@ -461,6 +591,10 @@ if st.session_state["logged_in"]:
                                                 st.session_state[
                                                     "messages"
                                                 ] = []
+
+                                                st.session_state[
+                                                    "current_chat_title"
+                                                ] = "New Chat"
 
 
                                             st.success(
@@ -564,6 +698,10 @@ if st.session_state["logged_in"]:
                                 "current_chat_id"
                             ] = chat["id"]
 
+                            st.session_state[
+                                "current_chat_title"
+                            ] = chat["title"]
+
 
                             st.session_state[
                                 "messages"
@@ -623,6 +761,10 @@ if st.session_state["logged_in"]:
                                     "messages"
                                 ] = []
 
+                                st.session_state[
+                                    "current_chat_title"
+                                ] = "New Chat"
+
 
                             st.rerun()
 
@@ -676,10 +818,12 @@ if st.session_state["logged_in"]:
 
             st.session_state["logged_in"] = False
             st.session_state["access_token"] = None
+            st.query_params.pop("session_token", None)
 
             st.session_state["current_page"] = "chat"
             st.session_state["messages"] = []
             st.session_state["current_chat_id"] = None
+            st.session_state["current_chat_title"] = "New Chat"
 
             st.rerun()
 
@@ -693,54 +837,323 @@ if st.session_state["logged_in"]:
 
         st.title("Internal AI Assistant")
 
+        st.subheader(
+            f"💬 {st.session_state.get('current_chat_title', 'New Chat')}"
+        )
+
         st.caption(
             "Ask questions and interact with your "
             "organization's AI assistant."
         )
 
+        show_flash_message()
+
+        token = st.session_state.get("access_token")
+
+        selected_model = None
+        selected_file_ids = []
+        selected_knowledge_ids = []
+
+        # =================================================
+        # CHAT SETTINGS - REAL BACKEND
+        # إعدادات الشات - الباك إند الحقيقي
+        # =================================================
+
+        if token:
+
+            # Keep this allow-list aligned with the approved
+            # project models.
+            #
+            # يجب أن تحتوي هذه القائمة فقط على الموديلات
+            # المعتمدة في المشروع.
+            APPROVED_MODELS = [
+                "gemini-3.1-flash-lite",
+                "gemini-3.5-flash-lite",
+                "gemini-3.5-flash",
+            ]
+
+            available_models = []
+            document_options = {}
+            knowledge_options = {}
+
+            # Load and filter models.
+            # تحميل الموديلات وتصفيتها.
+            try:
+                response = get_models(token)
+
+                if response.status_code == 200:
+                    models_list = normalize_list_response(
+                        response.json(),
+                        "models",
+                        "data",
+                        "items",
+                    )
+
+                    for item in models_list:
+                        model_name = extract_model_name(item)
+
+                        if (
+                            model_name
+                            and model_name in APPROVED_MODELS
+                            and model_name not in available_models
+                        ):
+                            available_models.append(model_name)
+
+            except Exception as error:
+                st.warning("Could not load AI models.")
+                st.caption(str(error))
+
+            # Load documents for multi-selection.
+            # تحميل المستندات للاختيار المتعدد.
+            try:
+                response = get_documents(token)
+
+                if response.status_code == 200:
+                    documents_list = normalize_list_response(
+                        response.json(),
+                        "documents",
+                        "items",
+                        "data",
+                    )
+
+                    for document in documents_list:
+                        if not isinstance(document, dict):
+                            continue
+
+                        document_id = (
+                            document.get("id")
+                            or document.get("document_id")
+                            or document.get("file_id")
+                        )
+
+                        document_name = (
+                            document.get("name")
+                            or document.get("filename")
+                            or document.get("title")
+                            or str(document_id)
+                        )
+
+                        if document_id:
+                            document_options[
+                                f"{document_name} [{document_id}]"
+                            ] = document_id
+
+            except Exception as error:
+                st.warning("Could not load documents.")
+                st.caption(str(error))
+
+            # Load Knowledge Bases for multi-selection.
+            # تحميل قواعد المعرفة للاختيار المتعدد.
+            try:
+                response = get_knowledge_bases(token)
+
+                if response.status_code == 200:
+                    knowledge_list = normalize_list_response(
+                        response.json(),
+                        "knowledge_bases",
+                        "knowledge",
+                        "items",
+                        "data",
+                    )
+
+                    for knowledge in knowledge_list:
+                        if not isinstance(knowledge, dict):
+                            continue
+
+                        knowledge_id = (
+                            knowledge.get("id")
+                            or knowledge.get("knowledge_id")
+                        )
+
+                        knowledge_name = (
+                            knowledge.get("title")
+                            or knowledge.get("name")
+                            or str(knowledge_id)
+                        )
+
+                        if knowledge_id:
+                            knowledge_options[
+                                f"{knowledge_name} [{knowledge_id}]"
+                            ] = knowledge_id
+
+            except Exception as error:
+                st.warning("Could not load Knowledge Bases.")
+                st.caption(str(error))
+
+            # Chat controls are rendered later, directly above
+            # the message input box.
+            # سيتم عرض خيارات الشات لاحقاً مباشرة فوق مربع الكتابة.
+        # =================================================
+        # CHAT SETTINGS - TEST MODE
+        # إعدادات الشات - وضع الاختبار
+        # =================================================
+
+        else:
+
+            # Prepare test-mode options. The controls themselves
+            # are rendered later above the message input.
+            # تجهيز خيارات وضع الاختبار، وسيتم عرضها لاحقاً
+            # فوق مربع كتابة الرسالة.
+            # Keep only names in the chat selector while test-mode storage
+            # also keeps each file's bytes for local download.
+            test_documents = [
+                document.get("name", "Document")
+                if isinstance(document, dict)
+                else str(document)
+                for document in st.session_state.get("documents", [])
+            ]
+
+            test_knowledge = [
+                knowledge.get("name", "Knowledge Base")
+                for knowledge in st.session_state.get(
+                    "knowledge_bases",
+                    []
+                )
+            ]
 
         # -------------------------------------------------
-        # WELCOME MESSAGE
-        # رسالة الترحيب
+        # CHAT MESSAGE AREA
+        # منطقة رسائل المحادثة
         # -------------------------------------------------
 
-        if len(st.session_state["messages"]) == 0:
+        # Keep the conversation in a dedicated scrollable area.
+        # This keeps the controls and message box together at the bottom.
+        #
+        # إبقاء المحادثة داخل منطقة مستقلة قابلة للتمرير.
+        # بهذه الطريقة تبقى خيارات الشات ومربع الكتابة معاً في الأسفل.
+        with st.container(height=390, border=False):
 
-            st.info(
-                "👋 Welcome! How can I help you today?"
+            # ---------------------------------------------
+            # WELCOME MESSAGE
+            # رسالة الترحيب
+            # ---------------------------------------------
+            if len(st.session_state["messages"]) == 0:
+                st.info(
+                    "👋 Welcome! How can I help you today?"
+                )
+
+            # ---------------------------------------------
+            # DISPLAY MESSAGES
+            # عرض الرسائل
+            # ---------------------------------------------
+            for message in st.session_state["messages"]:
+                role = message.get("role", "assistant")
+                content = message.get("content", "")
+
+                with st.chat_message(role):
+                    st.write(content)
+
+        # -------------------------------------------------
+        # CHAT COMPOSER
+        # منطقة خيارات الشات وكتابة الرسالة
+        # -------------------------------------------------
+
+        # IMPORTANT:
+        # st.chat_input is placed INSIDE this container instead of directly
+        # in the page body. This prevents Streamlit from pinning the input
+        # separately at the bottom of the browser window.
+        #
+        # مهم:
+        # وضع st.chat_input داخل هذا الـ container يمنع Streamlit من تثبيت
+        # مربع الكتابة منفصلاً في أسفل الشاشة، وبالتالي تبقى خيارات
+        # Model / Documents / Knowledge مباشرة فوق مربع الكتابة.
+        with st.container(key="chat_composer"):
+
+            if token:
+
+                model_col, docs_col, knowledge_col = st.columns(
+                    [1.15, 1, 1]
+                )
+
+                with model_col:
+                    if available_models:
+                        selected_model = st.selectbox(
+                            "🤖 Model",
+                            available_models,
+                            key="chat_model",
+                        )
+                    else:
+                        st.warning(
+                            "No approved models available."
+                        )
+
+                with docs_col:
+                    selected_documents = st.multiselect(
+                        "📎 Documents",
+                        options=list(document_options.keys()),
+                        key="chat_documents",
+                        placeholder="Select documents",
+                        help="You can select more than one document.",
+                    )
+
+                    selected_file_ids = [
+                        document_options[name]
+                        for name in selected_documents
+                    ]
+
+                with knowledge_col:
+                    selected_knowledge = st.multiselect(
+                        "📚 Knowledge",
+                        options=list(knowledge_options.keys()),
+                        key="chat_knowledge",
+                        placeholder="Select knowledge",
+                        help="You can select more than one Knowledge Base.",
+                    )
+
+                    selected_knowledge_ids = [
+                        knowledge_options[name]
+                        for name in selected_knowledge
+                    ]
+
+            else:
+
+                model_col, docs_col, knowledge_col = st.columns(
+                    [1.15, 1, 1]
+                )
+
+                with model_col:
+                    selected_model = st.selectbox(
+                        "🤖 Model",
+                        [
+                            "gemini-3.1-flash-lite",
+                            "gemini-3.5-flash-lite",
+                            "gemini-3.5-flash",
+                        ],
+                        key="test_chat_model",
+                    )
+
+                with docs_col:
+                    st.multiselect(
+                        "📎 Documents",
+                        options=test_documents,
+                        key="test_chat_documents",
+                        placeholder=(
+                            "No documents"
+                            if not test_documents
+                            else "Select documents"
+                        ),
+                    )
+
+                with knowledge_col:
+                    st.multiselect(
+                        "📚 Knowledge",
+                        options=test_knowledge,
+                        key="test_chat_knowledge",
+                        placeholder=(
+                            "No knowledge"
+                            if not test_knowledge
+                            else "Select knowledge"
+                        ),
+                    )
+
+            # ---------------------------------------------
+            # CHAT INPUT
+            # إدخال رسالة المستخدم
+            # ---------------------------------------------
+            prompt = st.chat_input(
+                "Ask anything...",
+                key="main_chat_input",
             )
-
-
-        # -------------------------------------------------
-        # DISPLAY MESSAGES
-        # عرض الرسائل
-        # -------------------------------------------------
-
-        for message in st.session_state["messages"]:
-
-            role = message.get(
-                "role",
-                "assistant"
-            )
-
-            content = message.get(
-                "content",
-                ""
-            )
-
-            with st.chat_message(role):
-                st.write(content)
-
-
-        # -------------------------------------------------
-        # CHAT INPUT
-        # إدخال رسالة المستخدم
-        # -------------------------------------------------
-
-        prompt = st.chat_input(
-            "Ask anything..."
-        )
-
 
         # -------------------------------------------------
         # PROCESS MESSAGE
@@ -749,19 +1162,12 @@ if st.session_state["logged_in"]:
 
         if prompt:
 
-            # Store the user's message.
-            # حفظ رسالة المستخدم.
             st.session_state["messages"].append(
                 {
                     "role": "user",
-                    "content": prompt
+                    "content": prompt,
                 }
             )
-
-            token = st.session_state.get(
-                "access_token"
-            )
-
 
             # =============================================
             # REAL BACKEND MODE
@@ -772,203 +1178,163 @@ if st.session_state["logged_in"]:
 
                 try:
 
-                    # -------------------------------------
-                    # GET AVAILABLE MODELS
-                    # جلب الموديلات المتاحة
-                    # -------------------------------------
-
-                    models_response = get_models(
-                        token
-                    )
-
-                    model = None
-
-                    if (
-                        models_response.status_code
-                        == 200
-                    ):
-
-                        models_data = (
-                            models_response.json()
-                        )
-
-                        # Handle possible wrapped response.
-                        # التعامل مع أكثر من شكل للاستجابة.
-                        if isinstance(
-                            models_data,
-                            dict
-                        ):
-
-                            models_list = (
-                                models_data.get("models")
-                                or models_data.get("data")
-                                or models_data.get("items")
-                                or []
-                            )
-
-                        else:
-
-                            models_list = models_data
-
-
-                        if (
-                            isinstance(models_list, list)
-                            and len(models_list) > 0
-                        ):
-
-                            model = extract_model_name(
-                                models_list[0]
-                            )
-
+                    if not selected_model:
+                        st.session_state["flash_message"] = {
+                            "type": "warning",
+                            "text": "Please select an approved AI model.",
+                        }
+                        st.rerun()
 
                     # -------------------------------------
-                    # NO MODEL AVAILABLE
-                    # لا يوجد موديل متاح
-                    # -------------------------------------
-
-                    if not model:
-
-                        st.warning(
-                            "No AI models are currently "
-                            "available."
-                        )
-
-
-                    # =====================================
                     # CREATE NEW CHAT
                     # إنشاء محادثة جديدة
-                    # =====================================
+                    # -------------------------------------
 
-                    elif (
-                        st.session_state[
-                            "current_chat_id"
-                        ] is None
+                    if (
+                        st.session_state["current_chat_id"]
+                        is None
                     ):
 
                         response = create_chat(
                             token=token,
                             message=prompt,
-                            model=model
+                            model=selected_model,
+                            file_ids=selected_file_ids or None,
+                            knowledge_ids=(
+                                selected_knowledge_ids or None
+                            ),
                         )
 
-
-                        if response.status_code in [
-                            200,
-                            201
-                        ]:
+                        if response.status_code in [200, 201]:
 
                             chat_data = response.json()
-
-                            chat_id = extract_chat_id(
-                                chat_data
-                            )
+                            chat_id = extract_chat_id(chat_data)
 
                             st.session_state[
                                 "current_chat_id"
                             ] = chat_id
 
+                            new_title = prompt[:35]
+                            st.session_state[
+                                "current_chat_title"
+                            ] = new_title
 
-                            ai_response = (
-                                extract_ai_response(
-                                    chat_data
+                            if chat_id:
+                                try:
+                                    update_chat_title(
+                                        token,
+                                        chat_id,
+                                        new_title,
+                                    )
+                                except Exception:
+                                    pass
+
+                                # Important:
+                                # Fetch the chat again after creation.
+                                # This gets the saved assistant message
+                                # from the backend immediately.
+                                #
+                                # مهم:
+                                # نعيد جلب الشات بعد إنشائه حتى يظهر
+                                # رد الذكاء الاصطناعي مباشرة.
+                                refreshed = refresh_chat_messages(
+                                    token,
+                                    chat_id,
                                 )
-                            )
 
-
-                            if ai_response:
-
-                                st.session_state[
-                                    "messages"
-                                ].append(
-                                    {
-                                        "role": "assistant",
-                                        "content": (
-                                            ai_response
+                                if not refreshed:
+                                    ai_response = (
+                                        extract_ai_response(
+                                            chat_data
                                         )
-                                    }
-                                )
+                                    )
+
+                                    if ai_response:
+                                        st.session_state[
+                                            "messages"
+                                        ].append(
+                                            {
+                                                "role": "assistant",
+                                                "content": ai_response,
+                                            }
+                                        )
+
+                            st.rerun()
 
                         else:
-
                             st.error(
                                 "Could not create the chat."
                             )
+                            st.caption(response.text)
 
-                            st.caption(
-                                response.text
-                            )
-
-
-                    # =====================================
-                    # SEND MESSAGE
-                    # إرسال رسالة للمحادثة الحالية
-                    # =====================================
+                    # -------------------------------------
+                    # SEND MESSAGE TO EXISTING CHAT
+                    # إرسال رسالة إلى شات موجود
+                    # -------------------------------------
 
                     else:
 
+                        chat_id = st.session_state[
+                            "current_chat_id"
+                        ]
+
                         response = send_message(
                             token=token,
-                            chat_id=(
-                                st.session_state[
-                                    "current_chat_id"
-                                ]
-                            ),
+                            chat_id=chat_id,
                             message=prompt,
-                            model=model
+                            model=selected_model,
+                            file_ids=selected_file_ids or None,
+                            knowledge_ids=(
+                                selected_knowledge_ids or None
+                            ),
                         )
 
+                        if response.status_code in [200, 201]:
 
-                        if response.status_code in [
-                            200,
-                            201
-                        ]:
-
-                            message_data = (
-                                response.json()
+                            # Reload the full chat after sending.
+                            # This fixes the issue where the AI
+                            # response appeared only after leaving
+                            # and reopening the conversation.
+                            #
+                            # إعادة تحميل الشات بعد الإرسال
+                            # لإظهار رد AI مباشرة.
+                            refreshed = refresh_chat_messages(
+                                token,
+                                chat_id,
                             )
 
-                            ai_response = (
-                                extract_ai_response(
-                                    message_data
+                            if not refreshed:
+                                message_data = response.json()
+                                ai_response = (
+                                    extract_ai_response(
+                                        message_data
+                                    )
                                 )
-                            )
 
+                                if ai_response:
+                                    st.session_state[
+                                        "messages"
+                                    ].append(
+                                        {
+                                            "role": "assistant",
+                                            "content": ai_response,
+                                        }
+                                    )
 
-                            if ai_response:
-
-                                st.session_state[
-                                    "messages"
-                                ].append(
-                                    {
-                                        "role": "assistant",
-                                        "content": (
-                                            ai_response
-                                        )
-                                    }
-                                )
+                            st.rerun()
 
                         else:
-
                             st.error(
                                 "Could not send the message."
                             )
-
-                            st.caption(
-                                response.text
-                            )
-
+                            st.caption(response.text)
 
                 except Exception as error:
-
-                    st.warning(
+                    st.error(
                         "Backend connection is currently "
                         "unavailable."
                     )
-
-                    st.caption(
-                        str(error)
-                    )
-
+                    st.caption(str(error))
 
             # =============================================
             # FRONTEND TEST MODE
@@ -977,41 +1343,34 @@ if st.session_state["logged_in"]:
 
             else:
 
-                # Create a local temporary chat when
-                # the first message is sent.
-                #
-                # إنشاء محادثة محلية مؤقتة عند إرسال
-                # أول رسالة.
-
                 if (
-                    st.session_state[
-                        "current_chat_id"
-                    ] is None
+                    st.session_state["current_chat_id"]
+                    is None
                 ):
 
                     new_chat_id = (
-                        len(
-                            st.session_state[
-                                "chats"
-                            ]
-                        )
-                        + 1
+                        len(st.session_state["chats"]) + 1
                     )
+
+                    new_title = prompt[:35]
 
                     new_chat = {
                         "id": new_chat_id,
-                        "title": prompt[:35],
-                        "messages": []
+                        "title": new_title,
+                        "messages": [],
                     }
 
-                    st.session_state[
-                        "chats"
-                    ].append(new_chat)
+                    st.session_state["chats"].append(
+                        new_chat
+                    )
 
                     st.session_state[
                         "current_chat_id"
                     ] = new_chat_id
 
+                    st.session_state[
+                        "current_chat_title"
+                    ] = new_title
 
                 temporary_response = (
                     "Frontend test mode: "
@@ -1019,41 +1378,33 @@ if st.session_state["logged_in"]:
                     "but the backend is not connected yet."
                 )
 
-
-                st.session_state[
-                    "messages"
-                ].append(
+                st.session_state["messages"].append(
                     {
                         "role": "assistant",
-                        "content": temporary_response
+                        "content": temporary_response,
                     }
                 )
 
-
-                # Save current messages inside
-                # the temporary recent chat.
-                #
-                # حفظ الرسائل داخل المحادثة المؤقتة.
-
                 for chat in st.session_state["chats"]:
-
                     if (
                         chat["id"]
                         == st.session_state[
                             "current_chat_id"
                         ]
                     ):
-
                         chat["messages"] = (
                             st.session_state[
                                 "messages"
                             ].copy()
                         )
-
+                        chat["title"] = (
+                            st.session_state[
+                                "current_chat_title"
+                            ]
+                        )
                         break
 
-
-            st.rerun()
+                st.rerun()
 
 
     # =====================================================
@@ -1156,17 +1507,23 @@ if st.session_state["logged_in"]:
 
                 else:
 
-                    if (
-                        uploaded_file.name
-                        not in st.session_state[
-                            "documents"
-                        ]
-                    ):
+                    existing_names = [
+                        document.get("name")
+                        if isinstance(document, dict)
+                        else str(document)
+                        for document in st.session_state["documents"]
+                    ]
 
-                        st.session_state[
-                            "documents"
-                        ].append(
-                            uploaded_file.name
+                    if uploaded_file.name not in existing_names:
+                        # Save bytes as well as the name so Download works
+                        # locally without the backend.
+                        st.session_state["documents"].append(
+                            {
+                                "name": uploaded_file.name,
+                                "content": uploaded_file.getvalue(),
+                                "mime_type": uploaded_file.type
+                                or "application/octet-stream",
+                            }
                         )
 
                         st.success(
@@ -1286,8 +1643,8 @@ if st.session_state["logged_in"]:
                                 )
 
 
-                            col1, col2 = st.columns(
-                                [5, 1]
+                            col1, col2, col3 = st.columns(
+                                [4, 1, 1]
                             )
 
 
@@ -1299,6 +1656,38 @@ if st.session_state["logged_in"]:
 
 
                             with col2:
+
+                                # Low-priority download feature.
+                                # ميزة تحميل المستند.
+                                if document_id:
+                                    try:
+                                        content_response = (
+                                            get_document_content(
+                                                token,
+                                                document_id
+                                            )
+                                        )
+
+                                        if (
+                                            content_response.status_code
+                                            == 200
+                                        ):
+                                            st.download_button(
+                                                "Download",
+                                                data=(
+                                                    content_response.content
+                                                ),
+                                                file_name=document_name,
+                                                key=(
+                                                    "download_backend_"
+                                                    f"{document_id}"
+                                                ),
+                                            )
+                                    except Exception:
+                                        pass
+
+
+                            with col3:
 
                                 if (
                                     document_id
@@ -1361,72 +1750,54 @@ if st.session_state["logged_in"]:
 
         else:
 
-            if len(
-                st.session_state["documents"]
-            ) == 0:
-
-                st.info(
-                    "No documents uploaded yet."
-                )
+            if len(st.session_state["documents"]) == 0:
+                st.info("No documents uploaded yet.")
 
             else:
-
-                for document in (
+                for index, document in enumerate(
                     st.session_state["documents"].copy()
                 ):
+                    if isinstance(document, dict):
+                        document_name = document.get("name", "Document")
+                        document_content = document.get("content", b"")
+                        document_mime = document.get(
+                            "mime_type", "application/octet-stream"
+                        )
+                    else:
+                        # Compatibility with old test-mode entries.
+                        document_name = str(document)
+                        document_content = None
+                        document_mime = "application/octet-stream"
 
-                    col1, col2 = st.columns(
-                        [5, 1]
-                    )
-
+                    col1, col2, col3 = st.columns([4, 1, 1])
 
                     with col1:
-
-                        st.write(
-                            f"📄 {document}"
-                        )
-
+                        st.write(f"📄 {document_name}")
 
                     with col2:
+                        if document_content is not None:
+                            st.download_button(
+                                "Download",
+                                data=document_content,
+                                file_name=document_name,
+                                mime=document_mime,
+                                key=f"download_local_{index}_{document_name}",
+                            )
+                        else:
+                            st.caption("Re-upload to download")
 
+                    with col3:
                         if st.button(
                             "Delete",
-                            key=(
-                                "delete_local_"
-                                f"{document}"
-                            )
+                            key=f"delete_local_{index}_{document_name}",
                         ):
+                            st.session_state["documents"].remove(document)
 
-                            st.session_state[
-                                "documents"
-                            ].remove(document)
-
-
-                            # Remove deleted document
-                            # from temporary Knowledge Bases.
-                            #
-                            # إزالة المستند المحذوف من
-                            # قواعد المعرفة المؤقتة.
-
-                            for knowledge in (
-                                st.session_state[
-                                    "knowledge_bases"
-                                ]
-                            ):
-
-                                if (
-                                    document
-                                    in knowledge.get(
-                                        "documents",
-                                        []
-                                    )
-                                ):
-
-                                    knowledge[
-                                        "documents"
-                                    ].remove(
-                                        document
-                                    )
+                            # Remove the deleted file from temporary
+                            # Knowledge Bases too.
+                            for knowledge in st.session_state["knowledge_bases"]:
+                                if document_name in knowledge.get("documents", []):
+                                    knowledge["documents"].remove(document_name)
 
                             st.rerun()
 
@@ -1681,12 +2052,54 @@ if st.session_state["logged_in"]:
                                 or ""
                             )
 
+                            # The list endpoint may omit document details.
+                            # Fetch the selected Knowledge Base itself so its
+                            # actual document list is displayed.
+                            #
+                            # قد لا تعيد قائمة قواعد المعرفة تفاصيل الملفات،
+                            # لذلك نجلب تفاصيل قاعدة المعرفة نفسها.
                             documents = (
-                                knowledge.get(
-                                    "documents"
-                                )
+                                knowledge.get("documents")
+                                or knowledge.get("files")
                                 or []
                             )
+
+                            if knowledge_id:
+                                try:
+                                    detail_response = (
+                                        get_knowledge_base(
+                                            token,
+                                            knowledge_id
+                                        )
+                                    )
+
+                                    if (
+                                        detail_response.status_code
+                                        == 200
+                                    ):
+                                        detail_data = (
+                                            detail_response.json()
+                                        )
+
+                                        if isinstance(
+                                            detail_data,
+                                            dict
+                                        ):
+                                            documents = (
+                                                detail_data.get(
+                                                    "documents"
+                                                )
+                                                or detail_data.get(
+                                                    "files"
+                                                )
+                                                or detail_data.get(
+                                                    "items"
+                                                )
+                                                or documents
+                                            )
+
+                                except Exception:
+                                    pass
 
 
                             with st.container(
@@ -2078,15 +2491,17 @@ if st.session_state["logged_in"]:
                             ) > 0:
 
                                 available_documents = [
-                                    document
-                                    for document
-                                    in st.session_state[
-                                        "documents"
-                                    ]
-                                    if document
-                                    not in knowledge[
-                                        "documents"
-                                    ]
+                                    (
+                                        document.get("name", "Document")
+                                        if isinstance(document, dict)
+                                        else str(document)
+                                    )
+                                    for document in st.session_state["documents"]
+                                    if (
+                                        document.get("name", "Document")
+                                        if isinstance(document, dict)
+                                        else str(document)
+                                    ) not in knowledge["documents"]
                                 ]
 
 
@@ -2260,6 +2675,12 @@ with col2:
                     st.session_state[
                         "access_token"
                     ] = data["access_token"]
+
+                    # Keep the session after browser refresh.
+                    # المحافظة على تسجيل الدخول بعد تحديث الصفحة.
+                    st.query_params["session_token"] = (
+                        data["access_token"]
+                    )
 
 
                     # Mark the user as logged in.

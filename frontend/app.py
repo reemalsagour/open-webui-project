@@ -208,21 +208,40 @@ def extract_model_name(model_item):
 
 def extract_ai_response(data):
     """
-    Extract assistant text from common backend
-    response formats.
+    Extract assistant text from both new-chat and existing-chat
+    backend response formats.
 
-    استخراج نص رد الذكاء الاصطناعي من الأشكال
-    المحتملة لاستجابة الباك إند.
+    استخراج نص رد الذكاء الاصطناعي من استجابة الباك إند
+    سواء عند إنشاء محادثة جديدة أو إرسال رسالة لمحادثة موجودة.
     """
 
     if not isinstance(data, dict):
         return str(data)
 
+    # New-chat backend response:
+    # {"chat": {...}, "usermessage": {...},
+    #  "assistantmessage": {"content": "..."}}
+    # استجابة إنشاء محادثة جديدة تحتوي رد المساعد داخل assistantmessage.
+    assistant_message = (
+        data.get("assistantmessage")
+        or data.get("assistant_message")
+    )
+
+    if isinstance(assistant_message, dict):
+        return (
+            assistant_message.get("content")
+            or assistant_message.get("message")
+        )
+
+    if isinstance(assistant_message, str):
+        return assistant_message
+
+    # Existing-chat and fallback response formats.
+    # أشكال الاستجابة الأخرى والاحتياطية.
     result = (
         data.get("response")
         or data.get("message")
         or data.get("content")
-        or data.get("assistant_message")
     )
 
     if isinstance(result, dict):
@@ -237,18 +256,24 @@ def extract_ai_response(data):
 
 def extract_chat_id(data):
     """
-    Extract chat ID from backend response.
+    Extract the chat ID from direct responses or from the nested
+    chat object returned when a new chat is created.
 
-    استخراج معرف المحادثة من استجابة الباك إند.
+    استخراج معرف المحادثة من الاستجابة المباشرة أو من كائن
+    chat الموجود داخل استجابة إنشاء محادثة جديدة.
     """
 
     if not isinstance(data, dict):
         return None
 
-    return (
-        data.get("id")
-        or data.get("chat_id")
-    )
+    chat = data.get("chat")
+
+    if isinstance(chat, dict):
+        chat_id = chat.get("id") or chat.get("chat_id")
+        if chat_id:
+            return chat_id
+
+    return data.get("id") or data.get("chat_id")
 
 
 def normalize_list_response(data, *keys):
@@ -440,6 +465,12 @@ if st.session_state["logged_in"]:
                                 or "Untitled Chat"
                             )
 
+                            # Only show the delete button when the chat
+                            # has a user ID.
+                            # إظهار زر الحذف فقط إذا كانت المحادثة
+                            # مرتبطة بمعرف مستخدم.
+                            chat_user_id = chat.get("user_id")
+
 
                             # Create two columns:
                             # one for opening the chat
@@ -552,7 +583,9 @@ if st.session_state["logged_in"]:
 
                             with delete_col:
 
-                                if st.button(
+                                # Do not render Delete when user_id is missing.
+                                # لا نعرض زر الحذف إذا لم يوجد user_id.
+                                if chat_user_id and st.button(
                                     "🗑️",
                                     key=f"delete_chat_{chat_id}",
                                     help="Delete chat"
@@ -1208,17 +1241,43 @@ if st.session_state["logged_in"]:
 
                             chat_data = response.json()
                             chat_id = extract_chat_id(chat_data)
+                            ai_response = extract_ai_response(chat_data)
 
                             st.session_state[
                                 "current_chat_id"
                             ] = chat_id
 
-                            new_title = prompt[:35]
+                            # Use the backend title when available; otherwise
+                            # keep the same short frontend title.
+                            # استخدام عنوان الباك إند إن وجد، وإلا نستخدم
+                            # العنوان المختصر الموجود في الفرونت إند.
+                            backend_chat = chat_data.get("chat", {})
+                            backend_title = (
+                                backend_chat.get("title")
+                                if isinstance(backend_chat, dict)
+                                else None
+                            )
+                            new_title = backend_title or prompt[:35]
                             st.session_state[
                                 "current_chat_title"
                             ] = new_title
 
+                            # The POST /chats/ response already contains the
+                            # assistant message. Add it immediately so the user
+                            # does not need to refresh the browser.
+                            # استجابة إنشاء الشات تحتوي رد AI بالفعل، لذلك
+                            # نضيفه مباشرة حتى يظهر بدون Refresh.
+                            if ai_response:
+                                st.session_state["messages"].append(
+                                    {
+                                        "role": "assistant",
+                                        "content": ai_response,
+                                    }
+                                )
+
                             if chat_id:
+                                # Keep the existing title update behavior.
+                                # الإبقاء على سلوك تحديث عنوان المحادثة الحالي.
                                 try:
                                     update_chat_title(
                                         token,
@@ -1228,35 +1287,19 @@ if st.session_state["logged_in"]:
                                 except Exception:
                                     pass
 
-                                # Important:
-                                # Fetch the chat again after creation.
-                                # This gets the saved assistant message
-                                # from the backend immediately.
-                                #
-                                # مهم:
-                                # نعيد جلب الشات بعد إنشائه حتى يظهر
-                                # رد الذكاء الاصطناعي مباشرة.
-                                refreshed = refresh_chat_messages(
-                                    token,
-                                    chat_id,
-                                )
-
-                                if not refreshed:
-                                    ai_response = (
-                                        extract_ai_response(
-                                            chat_data
-                                        )
+                                # Synchronize with the backend after using the
+                                # immediate POST response. If synchronization
+                                # fails, the response already displayed above
+                                # remains in session_state.
+                                # مزامنة الرسائل مع الباك إند بعد عرض الرد
+                                # مباشرة، وإذا فشلت يبقى الرد ظاهرًا محليًا.
+                                try:
+                                    refresh_chat_messages(
+                                        token,
+                                        chat_id,
                                     )
-
-                                    if ai_response:
-                                        st.session_state[
-                                            "messages"
-                                        ].append(
-                                            {
-                                                "role": "assistant",
-                                                "content": ai_response,
-                                            }
-                                        )
+                                except Exception:
+                                    pass
 
                             st.rerun()
 

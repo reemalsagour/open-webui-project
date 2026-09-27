@@ -1,187 +1,227 @@
-# Project #10 — Internal AI Chat Platform
+# Internal AI Chat Platform Based on OpenWebUI
 
-## 1. Project Overview
+## 1. Project Summary
 
-This project implements an internal AI chat platform based on Open WebUI.
+This project is an internal AI chat platform based on OpenWebUI. It provides a centralized environment for AI conversations, document management, and organizational knowledge.
 
-The platform is deployed on Microsoft Azure using Terraform for infrastructure provisioning and Docker Compose for application deployment.
+The platform consists of:
 
-The AI model is hosted locally on the Azure virtual machine using Ollama.
+* **Streamlit** — frontend user interface
+* **FastAPI** — backend API and application logic
+* **OpenWebUI** — AI interaction and document/knowledge functionality
+* **Gemini** — AI model provider
+* **PostgreSQL** — application database
+* **Docker** — containerization
+* **Terraform** — Azure infrastructure provisioning
+* **Bash scripts** — setup and deployment automation
 
-## 2. Technology Stack
+Users can start AI conversations, manage conversation history, upload documents, and create and manage knowledge bases.
 
-* Microsoft Azure
-* Terraform
-* Ubuntu Linux
+---
+
+## 2. Requirements
+
+### Required for Local Installation
+
+* Python 3.12+
 * Docker
 * Docker Compose
-* Open WebUI
-* Ollama
-* Llama 3.2 3B
+* PostgreSQL
+* Gemini API key
 
-## 3. Architecture
+### Required for Azure Installation
 
-The platform follows this architecture:
+* Azure account/subscription
+* Azure CLI
+* Terraform
+* Docker
+* Docker Compose
+* SSH key pair
+* Gemini API key
+* PostgreSQL database
+* Azure permissions to create and manage the required resources
 
-Employee Browser
-|
-v
-Azure Virtual Machine
-|
-v
-Open WebUI
-|
-v
-Ollama
-|
-v
-Llama 3.2 3B
+---
 
-Terraform provisions the Azure infrastructure.
+## 3. Installation
 
-Docker Compose runs Open WebUI and Ollama.
+### 3.1 Local Installation
 
-Ollama provides the Llama 3.2 3B language model.
+#### Step 1 — Create the environment file
 
-## 4. Azure Infrastructure
+Copy `.env.example` and rename it to `.env`:
 
-Terraform provisions the following Azure resources:
+Fill in the required values in .env using the [API Keys & Environment Variables](#5-api-keys--environment-variables) section below.
 
-* Resource Group
-* Virtual Network
-* Subnet
-* Public IP Address
-* Network Security Group
-* Network Interface
-* Ubuntu Linux Virtual Machine
+#### Step 2 — Start the application
 
-## 5. Application Components
-
-### Open WebUI
-
-Open WebUI provides the web-based chat interface used by employees.
-
-### Ollama
-
-Ollama provides the local AI model runtime.
-
-### Llama 3.2 3B
-
-Llama 3.2 3B is the language model used by the platform.
-
-## 6. Project Structure
-
-```text
-open-webui-project/
-│
-├── terraform/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── terraform.tfvars
-│
-├── docker/
-│   └── compose.yml
-│
-├── scripts/
-│   ├── setup.sh
-│   ├── start.sh
-│   ├── stop.sh
-│   ├── validate.sh
-│   └── cleanup.sh
-│
-├── docs/
-│   ├── USER-GUIDE.md
-│   ├── SECURITY.md
-│   └── MAINTENANCE.md
-│
-├── README.md
-└── .gitignore
-```
-
-## 7. Deployment Process
-
-The infrastructure is created using Terraform.
-
-The application is deployed using Docker Compose.
-
-The general deployment process is:
-
-1. Provision Azure infrastructure using Terraform.
-2. Connect to the Azure Linux virtual machine using SSH.
-3. Install Docker and Docker Compose.
-4. Deploy Open WebUI and Ollama using Docker Compose.
-5. Download the Llama 3.2 3B model.
-6. Access Open WebUI through the configured network endpoint.
-7. Validate the platform using the validation script.
-
-## 8. Operational Scripts
-
-The project contains Bash scripts for common administrative tasks.
-
-### setup.sh
-
-Prepares the system and starts the application.
-
-### start.sh
-
-Starts Open WebUI and Ollama.
-
-### stop.sh
-
-Stops Open WebUI and Ollama.
-
-### validate.sh
-
-Checks Docker, Docker Compose, containers, Ollama models, and Open WebUI health.
-
-### cleanup.sh
-
-Stops and removes application containers while preserving persistent Docker volumes.
-
-## 9. Validation
-
-The platform can be validated using:
+Cd into the docker folder and build and start the Docker containers in dev mode:
 
 ```bash
-./validate.sh
+cd docker
+docker compose --env-file "../.env"  -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 ```
 
-The validation checks:
+The application can then be accessed through the configured addresses:
+* http://localhost:8000 for backend
+* http://localhost:8501 for frontend
 
-* Docker installation
-* Docker Compose installation
-* Container status
-* Ollama model availability
-* Open WebUI health
+---
 
-## 10. Security
+### 3.2 Azure Installation (PLACEHOLDER)
 
-The Azure Network Security Group restricts inbound access.
+#### Step 1 — Log in to Azure
 
-SSH access is restricted to the administrator's approved IP address.
+```bash
+az login
+```
 
-Open WebUI access is restricted using an IP-based network security rule.
+#### Step 2 — Initialize Terraform
 
-SSH password authentication is disabled and SSH public-key authentication is used.
+Navigate to the Terraform directory:
 
-Sensitive files such as Terraform variables, Terraform state, environment files, and SSH private keys are excluded from Git.
+```bash
+cd terraform
+```
 
-## 11. Persistent Storage
+Initialize Terraform:
 
-Docker volumes are used to persist:
+```bash
+terraform init
+```
 
-* Open WebUI application data
-* Ollama model data
+#### Step 3 — Configure Terraform
 
-This allows the application containers to be recreated without automatically losing the stored application data and downloaded model.
+Create the required Terraform variables file according to the provided example and enter the required Azure values.
 
-## 12. Current Status
+Then review the resources that will be created:
 
-The Azure infrastructure has been provisioned using Terraform.
+```bash
+terraform plan
+```
 
-Open WebUI and Ollama have been deployed using Docker Compose.
+#### Step 4 — Provision the Azure infrastructure
 
-Llama 3.2 3B has been downloaded and tested.
+```bash
+terraform apply
+```
 
-The platform is operational and accessible through the configured Azure endpoint.
+Confirm the operation when prompted.
+
+#### Step 5 — Connect to the Azure VM
+
+After Terraform finishes, connect to the provisioned VM using SSH:
+
+```bash
+ssh <username>@<VM_PUBLIC_IP>
+```
+
+#### Step 6 — Configure the application
+
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Enter the required environment variables.
+
+For Azure, use the Azure PostgreSQL host for `POSTGRES_HOST`.
+
+#### Step 7 — Start the application
+
+Build and start the Docker containers:
+
+```bash
+docker compose up --build -d
+```
+
+Check the running containers:
+
+```bash
+docker compose ps
+```
+
+The application can then be accessed using the public address of the Azure deployment.
+
+---
+
+## 4. Run the Project
+
+### Local
+
+From the docker directory:
+
+```bash
+docker compose --env-file "../.env"  -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+```
+
+To stop the application:
+
+```bash
+docker compose --env-file "../.env"  -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+### Azure (PLACEHOLDER)
+
+Connect to the Azure VM:
+
+```bash
+ssh <username>@<VM_PUBLIC_IP>
+```
+
+Then start the application:
+
+```bash
+docker compose up -d
+```
+
+To view the logs:
+
+```bash
+docker compose logs -f
+```
+
+To stop the application:
+
+```bash
+docker compose down
+```
+---
+
+## 5. API Keys & Environment Variables
+
+Create the environment file from the provided .env.example file:
+
+```bash
+cp .env.example .env
+```
+
+The following values are required:
+
+### Where to obtain each value
+
+| Variable                      | Purpose                           | Obtain from                                                             |
+| ----------------------------- | --------------------------------- | ----------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD`           | PostgreSQL database password      | Your Postgres password that you use to connect to PostgreSQL in `psql`  |
+| `POSTGRES_HOST`               | PostgreSQL database host          | `localhost:5432` for local use or the Azure PostgreSQL host             |
+| `POSTGRES_USER`               | PostgreSQL database user          | `openwebuiadmin`                                                        |
+| `POSTGRES_DB`                 | PostgreSQL database name          | `openwebui`                                                             |
+| `POSTGRES_SSL`                 | PostgreSQL SLL setting          | `require` for deployment. `disable` for local                                                              |
+| `JWT_SECRET_KEY`              | Secret used to sign JWT tokens    | [JWT Secret Key Generator](https://jwtsecretkeygenerator.com/)          |
+| `JWT_ALGORITHM`               | JWT signing algorithm             | `HS256`                                                                 |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime                    | `1440`                                                                  |
+| `GEMINI_API_KEY`              | Gemini API key                    | [Google AI Studio API Keys](https://aistudio.google.com/api-keys)       |
+| `OPEN_WEB_UI_API_URL`         | Address of the OpenWebUI instance | `http://localhost:3000` for local use or the OpenWebUI address in Azure |
+| `OPENWEBUI_ADMIN_EMAIL`       | OpenWebUI admin email             | Whatever email you want                                                 |
+| `OPENWEBUI_ADMIN_PASSWORD`    | OpenWebUI admin password          | Whatever password you want                                              |
+| `FRONTEND_TEST_MODE`    | For front end to use test mode or real backend          | `false`                                              |
+| `BACKEND_URL`    | Backend URL that the frontend should use          | http://localhost:8000                                              |
+
+---
+
+## 6. Known Issues
+
+* Gemini availability depends on the external Gemini API and its service limits.
+* Gemini model names may change over time, which may require updating the configured model names.
+* Temporary errors or high demand from the external AI service may affect AI responses.

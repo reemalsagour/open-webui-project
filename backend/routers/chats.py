@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from database import get_db
 from database_models import Chat, Message, User, Document, KnowledgeBase
 from pydantic_models import ChatResponse, MessageCreate, MessageResponse, ChatMessageResponse, ChatDetailResponse
@@ -19,7 +20,7 @@ def build_documents_and_knowledge(db: Session, current_user: User, file_ids: lis
     
     if file_ids is not None:
             for file_id in file_ids:
-                file = db.query(Document).filter(Document.user_id == current_user.id, Document.id == file_id).first()
+                file = db.query(Document).filter(Document.id == file_id, or_(Document.user_id == current_user.id, Document.user_id == None)).first()
                 if file is not None:
                     documents_and_knowledge_request_array.append({'type': 'file', 'id': file.open_web_ui_file_id})
                 else:
@@ -27,7 +28,7 @@ def build_documents_and_knowledge(db: Session, current_user: User, file_ids: lis
         
     if knowledge_ids is not None:
         for knowledge_id in knowledge_ids:
-            knowledge_base = db.query(KnowledgeBase).filter(KnowledgeBase.user_id == current_user.id, KnowledgeBase.id == knowledge_id).first()
+            knowledge_base = db.query(KnowledgeBase).filter(KnowledgeBase.id == knowledge_id, or_(KnowledgeBase.user_id == current_user.id, KnowledgeBase.user_id == None)).first()
             if knowledge_base is not None:
                 documents_and_knowledge_request_array.append({'type': 'collection', 'id': knowledge_base.open_web_ui_knowledge_id})
             else:

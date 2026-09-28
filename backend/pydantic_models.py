@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from uuid import UUID
+from typing import Optional
 
 # Auth
 class UserResponse(BaseModel):
@@ -47,6 +48,7 @@ class DocumentResponse(BaseModel):
     id: UUID
     name: str
     created_date: datetime
+    user: Optional[UserResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -62,6 +64,7 @@ class KnowledgeBaseResponse(BaseModel):
     description: str
     created_date: datetime
     updated_date: datetime
+    user: Optional[UserResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 

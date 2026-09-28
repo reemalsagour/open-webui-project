@@ -295,6 +295,29 @@ def normalize_list_response(data, *keys):
     return []
 
 
+def normalize_chat_messages(messages):
+    """
+    Keep chat messages in chronological order so new messages
+    always appear at the bottom of the conversation.
+
+    ترتيب رسائل المحادثة زمنياً حتى تظهر الرسائل الجديدة
+    دائماً في أسفل المحادثة.
+    """
+    if not isinstance(messages, list):
+        return []
+
+    # Python sort is stable, so messages with the same/missing timestamp
+    # keep the order returned by the backend.
+    return sorted(
+        messages,
+        key=lambda message: (
+            str(message.get("created_date") or message.get("created_at") or "9999")
+            if isinstance(message, dict)
+            else "9999"
+        ),
+    )
+
+
 def refresh_chat_messages(token, chat_id):
     """
     Reload a chat from the backend so the newest AI response
@@ -313,7 +336,7 @@ def refresh_chat_messages(token, chat_id):
     if not isinstance(data, dict):
         return False
 
-    st.session_state["messages"] = data.get("messages", [])
+    st.session_state["messages"] = normalize_chat_messages(data.get("messages", []))
 
     title = data.get("title")
     if title:
@@ -536,7 +559,7 @@ if st.session_state["logged_in"]:
 
                                             st.session_state[
                                                 "messages"
-                                            ] = messages
+                                            ] = normalize_chat_messages(messages)
 
 
                                             st.session_state[
@@ -1333,35 +1356,26 @@ if st.session_state["logged_in"]:
 
                         if response.status_code in [200, 201]:
 
-                            # Reload the full chat after sending.
-                            # This fixes the issue where the AI
-                            # response appeared only after leaving
-                            # and reopening the conversation.
+                            # The user message is already appended locally above.
+                            # Append the assistant response directly after it so the
+                            # new exchange stays at the bottom without a page refresh.
                             #
-                            # إعادة تحميل الشات بعد الإرسال
-                            # لإظهار رد AI مباشرة.
-                            refreshed = refresh_chat_messages(
-                                token,
-                                chat_id,
-                            )
+                            # رسالة المستخدم مضافة محلياً مسبقاً، لذلك نضيف رد
+                            # المساعد بعدها مباشرة ليبقى ترتيب المحادثة صحيحاً.
+                            message_data = response.json()
+                            ai_response = extract_ai_response(message_data)
 
-                            if not refreshed:
-                                message_data = response.json()
-                                ai_response = (
-                                    extract_ai_response(
-                                        message_data
-                                    )
+                            if ai_response:
+                                st.session_state["messages"].append(
+                                    {
+                                        "role": "assistant",
+                                        "content": ai_response,
+                                    }
                                 )
-
-                                if ai_response:
-                                    st.session_state[
-                                        "messages"
-                                    ].append(
-                                        {
-                                            "role": "assistant",
-                                            "content": ai_response,
-                                        }
-                                    )
+                            else:
+                                # Fallback only if the send endpoint does not return
+                                # assistant content in the expected format.
+                                refresh_chat_messages(token, chat_id)
 
                             st.rerun()
 
@@ -1666,6 +1680,8 @@ if st.session_state["logged_in"]:
                                     )
                                 )
 
+                                document_user_id = document.get("user_id")
+
                                 document_name = (
                                     document.get("name")
                                     or document.get(
@@ -1680,6 +1696,7 @@ if st.session_state["logged_in"]:
                             else:
 
                                 document_id = None
+                                document_user_id = None
                                 document_name = str(
                                     document
                                 )
@@ -1733,6 +1750,7 @@ if st.session_state["logged_in"]:
 
                                 if (
                                     document_id
+                                    and document_user_id
                                     and st.button(
                                         "Delete",
                                         key=(
@@ -2081,6 +2099,8 @@ if st.session_state["logged_in"]:
                                 )
                             )
 
+                            knowledge_user_id = knowledge.get("user_id")
+
                             knowledge_title = (
                                 knowledge.get("title")
                                 or knowledge.get("name")
@@ -2127,6 +2147,9 @@ if st.session_state["logged_in"]:
                                             detail_data,
                                             dict
                                         ):
+                                            if "user_id" in detail_data:
+                                                knowledge_user_id = detail_data.get("user_id")
+
                                             documents = (
                                                 detail_data.get(
                                                     "documents"
@@ -2379,6 +2402,7 @@ if st.session_state["logged_in"]:
 
                                     if (
                                         knowledge_id
+                                        and knowledge_user_id
                                         and st.button(
                                             "Delete",
                                             key=(

@@ -108,6 +108,11 @@ if "logged_in" not in st.session_state:
 if "access_token" not in st.session_state:
     st.session_state["access_token"] = None
 
+# Authenticated user ID used for resource ownership checks.
+# معرف المستخدم الحالي المستخدم للتحقق من ملكية العناصر.
+if "current_user_id" not in st.session_state:
+    st.session_state["current_user_id"] = None
+
 
 # Restore the JWT from the URL after a browser refresh.
 # استعادة رمز الدخول من الرابط بعد تحديث الصفحة.
@@ -124,6 +129,12 @@ if not TEST_MODE and not st.session_state["access_token"]:
             if user_response.status_code == 200:
                 st.session_state["access_token"] = saved_token
                 st.session_state["logged_in"] = True
+
+                user_data = user_response.json()
+                if isinstance(user_data, dict):
+                    st.session_state["current_user_id"] = (
+                        user_data.get("id") or user_data.get("user_id")
+                    )
             else:
                 st.query_params.pop("session_token", None)
 
@@ -274,6 +285,30 @@ def extract_chat_id(data):
             return chat_id
 
     return data.get("id") or data.get("chat_id")
+
+
+def get_logged_in_user_id(token):
+    """Return and cache the authenticated user's ID."""
+    cached_user_id = st.session_state.get("current_user_id")
+    if cached_user_id:
+        return cached_user_id
+
+    if not token:
+        return None
+
+    try:
+        response = get_current_user(token)
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, dict):
+                user_id = data.get("id") or data.get("user_id")
+                if user_id:
+                    st.session_state["current_user_id"] = user_id
+                    return user_id
+    except Exception:
+        pass
+
+    return None
 
 
 def normalize_list_response(data, *keys):
@@ -874,6 +909,7 @@ if st.session_state["logged_in"]:
 
             st.session_state["logged_in"] = False
             st.session_state["access_token"] = None
+            st.session_state["current_user_id"] = None
             st.query_params.pop("session_token", None)
 
             st.session_state["current_page"] = "chat"
@@ -1620,6 +1656,8 @@ if st.session_state["logged_in"]:
 
         if token:
 
+            current_user_id = get_logged_in_user_id(token)
+
             try:
 
                 response = get_documents(
@@ -1750,7 +1788,9 @@ if st.session_state["logged_in"]:
 
                                 if (
                                     document_id
-                                    and document_user_id
+                                    and document_user_id is not None
+                                    and current_user_id is not None
+                                    and str(document_user_id) == str(current_user_id)
                                     and st.button(
                                         "Delete",
                                         key=(
@@ -2033,6 +2073,8 @@ if st.session_state["logged_in"]:
         # =============================================
 
         if token:
+
+            current_user_id = get_logged_in_user_id(token)
 
             try:
 
@@ -2402,7 +2444,9 @@ if st.session_state["logged_in"]:
 
                                     if (
                                         knowledge_id
-                                        and knowledge_user_id
+                                        and knowledge_user_id is not None
+                                        and current_user_id is not None
+                                        and str(knowledge_user_id) == str(current_user_id)
                                         and st.button(
                                             "Delete",
                                             key=(

@@ -1718,7 +1718,12 @@ if st.session_state["logged_in"]:
                                     )
                                 )
 
-                                document_user_id = document.get("user_id")
+                                document_user = document.get("user")
+                                document_user_id = (
+                                    document_user.get("id")
+                                    if isinstance(document_user, dict)
+                                    else None
+                                )
 
                                 document_name = (
                                     document.get("name")
@@ -2141,7 +2146,12 @@ if st.session_state["logged_in"]:
                                 )
                             )
 
-                            knowledge_user_id = knowledge.get("user_id")
+                            knowledge_user = knowledge.get("user")
+                            knowledge_user_id = (
+                                knowledge_user.get("id")
+                                if isinstance(knowledge_user, dict)
+                                else None
+                            )
 
                             knowledge_title = (
                                 knowledge.get("title")
@@ -2189,8 +2199,11 @@ if st.session_state["logged_in"]:
                                             detail_data,
                                             dict
                                         ):
-                                            if "user_id" in detail_data:
-                                                knowledge_user_id = detail_data.get("user_id")
+                                            detail_user = detail_data.get("user")
+                                            if isinstance(detail_user, dict):
+                                                knowledge_user_id = detail_user.get("id")
+                                            elif detail_user is None and "user" in detail_data:
+                                                knowledge_user_id = None
 
                                             documents = (
                                                 detail_data.get(

@@ -23,6 +23,11 @@ output "open_webui_url" {
   value = "http://${azurerm_public_ip.open_webui.ip_address}:3000"
 }
 
+output "openwebui_admin_email" {
+  description = "Open WebUI administrator email"
+  value       = var.openwebui_admin_email
+}
+
 output "postgresql_server_name" {
   description = "PostgreSQL Flexible Server name"
   value       = azurerm_postgresql_flexible_server.open_webui.name

@@ -9,6 +9,12 @@ echo " AI Platform Setup"
 echo "======================================"
 
 echo ""
+echo "[0] Checking Azure CLI..."
+if ! command -v az >/dev/null 2>&1; then
+    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+fi
+
+echo ""
 echo "[1] Updating system packages..."
 sudo apt-get update
 
@@ -42,7 +48,9 @@ sudo systemctl start docker
 echo ""
 echo "[5] Pulling secrets from Azure Key Vault..."
 
-VAULT_NAME="kv-openwebui-project"
+VAULT_NAME="${1:-kv-openwebui-project}"
+POSTGRES_HOST_ARG="${2:-}"
+ADMIN_EMAIL_ARG="${3:-admin@yourcompany.com}"
 
 az login --identity >/dev/null
 
@@ -54,14 +62,17 @@ OPENWEBUI_ADMIN_PASSWORD=$(az keyvault secret show --vault-name "$VAULT_NAME" --
 cat > "$HOME/open-webui-project/.env" << EOF
 POSTGRES_USER=openwebuiadmin
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-POSTGRES_HOST=psql-openwebui-project.postgres.database.azure.com
+POSTGRES_HOST=${POSTGRES_HOST_ARG:-psql-openwebui-project.postgres.database.azure.com}
 POSTGRES_DB=openwebui
+POSTGRES_SSL=require
 GEMINI_API_KEY=${GEMINI_API_KEY}
 JWT_SECRET_KEY=${JWT_SECRET_KEY}
 JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-OPENWEBUI_ADMIN_EMAIL=admin@yourcompany.com
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+OPENWEBUI_ADMIN_EMAIL=${ADMIN_EMAIL_ARG}
 OPENWEBUI_ADMIN_PASSWORD=${OPENWEBUI_ADMIN_PASSWORD}
+FRONTEND_TEST_MODE=false
+BACKEND_URL=http://backend:8000
 EOF
 
 cd "$PROJECT_DIR"
@@ -75,11 +86,11 @@ fi
 
 echo ""
 echo "[7] Starting services..."
-docker compose up -d --build
+sudo docker compose up -d --build
 
 echo ""
 echo "[8] Deployment status..."
-docker compose ps
+sudo docker compose ps
 
 echo ""
 echo "======================================"

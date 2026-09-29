@@ -31,6 +31,7 @@ postgresql_storage_mb            = 32768
 postgresql_sku_name              = "B_Standard_B1ms"
 postgresql_backup_retention_days = 7
 
+key_vault_name           = "YOUR_KEY_VAULT_NAME_HERE"
 gemini_api_key           = "YOUR_GEMINI_API_KEY_HERE"
 jwt_secret_key           = "YOUR_JWT_SECRET_KEY_HERE"
 openwebui_admin_email = "YOUR_ADMIN_EMAIL_HERE"

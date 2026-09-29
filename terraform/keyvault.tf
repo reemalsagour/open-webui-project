@@ -1,7 +1,7 @@
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_key_vault" "open_webui" {
-  name                       = "kv-openwebui-project"
+  name                       = var.key_vault_name
   resource_group_name        = azurerm_resource_group.open_webui.name
   location                   = azurerm_resource_group.open_webui.location
   tenant_id                  = data.azurerm_client_config.current.tenant_id

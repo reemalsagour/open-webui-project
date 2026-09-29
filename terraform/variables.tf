@@ -107,10 +107,17 @@ variable "jwt_secret_key" {
 variable "openwebui_admin_email" {
   description = "Open WebUI administrator email"
   type        = string
+  default     = "admin@yourcompany.com"
 }
 
 variable "openwebui_admin_password" {
   description = "Open WebUI admin password"
   type        = string
   sensitive   = true
+}
+
+variable "key_vault_name" {
+  description = "Azure Key Vault name (must be globally unique across Azure)"
+  type        = string
+  default     = "kv-openwebui-project"
 }

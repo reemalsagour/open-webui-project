@@ -42,7 +42,8 @@ param(
     [string]$Location,
     [string]$VmIp,
     [string]$KeyVaultName,
-    [string]$PostgresHost
+    [string]$PostgresHost,
+    [string]$AdminEmailParam
 )
 
 $ErrorActionPreference = "Stop"
@@ -94,6 +95,24 @@ function Read-ValidatedPassword([string]$Prompt) {
     }
 }
 
+function Test-IpInCidr {
+    param([string]$Ip, [string]$Cidr)
+    try {
+        $parts = $Cidr -split '/'
+        if ($parts.Count -ne 2) { return $false }
+        $prefixLen = [int]$parts[1]
+        if ($prefixLen -eq 0) { return $true }  # 0.0.0.0/0 allows everyone
+        $ipBytes  = [System.Net.IPAddress]::Parse($Ip).GetAddressBytes()
+        $netBytes = [System.Net.IPAddress]::Parse($parts[0]).GetAddressBytes()
+        if ($ipBytes.Length -ne 4 -or $netBytes.Length -ne 4) { return $false }
+        [Array]::Reverse($ipBytes); [Array]::Reverse($netBytes)
+        $ipInt  = [BitConverter]::ToUInt32($ipBytes, 0)
+        $netInt = [BitConverter]::ToUInt32($netBytes, 0)
+        $mask = [uint32]([math]::Pow(2, 32) - [math]::Pow(2, 32 - $prefixLen))
+        return (($ipInt -band $mask) -eq ($netInt -band $mask))
+    } catch { return $false }
+}
+
 function Test-AzLogin {
     $old = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -138,14 +157,23 @@ function New-TfVars {
         Write-Warn "Use 3-24 letters, digits or hyphens, starting with a letter."
     }
 
+    while ($true) {
+        $adminEmail = Read-Default "Open WebUI admin email (this is your own login, not sent anywhere)" "admin@example.com"
+        if ($adminEmail -match '^[^@\s]+@[^@\s]+\.[^@\s]+$') { break }
+        Write-Warn "Enter a valid email address, e.g. name@example.com."
+    }
+
+    $regionDefault = if ($Location) { $Location } else { "eastus2" }
+    $region = Read-Default "Azure region (affects VM/quota availability, especially on student subscriptions)" $regionDefault
+
     Write-Host ""
     Write-Host "Choose passwords and paste your Gemini key. Input is hidden."
     $pgPassword    = Read-ValidatedPassword "PostgreSQL admin password"
     $adminPassword = Read-ValidatedPassword "Open WebUI admin password"
     while ($true) {
         $gemini = (Read-Secret "Gemini API key").Trim()
-        if ($gemini -match '^[A-Za-z0-9_-]{20,}$') { break }
-        Write-Warn "That does not look like a Gemini API key. Copy it again from Google AI Studio."
+        if ($gemini.Length -ge 10) { break }
+        Write-Warn "That looks too short for a Gemini API key. Copy it again from Google AI Studio."
     }
 
     $bytes = New-Object byte[] 32
@@ -159,15 +187,16 @@ function New-TfVars {
         ('ssh_public_key            = "{0}"' -f $pub),
         ('allowed_ssh_cidr          = "{0}"' -f $cidr),
         ('allowed_web_cidr          = "{0}"' -f $cidr),
+        ('location                  = "{0}"' -f $region),
         ('postgresql_server_name    = "{0}"' -f $pgName),
         ('key_vault_name            = "{0}"' -f $kvName),
+        ('openwebui_admin_email     = "{0}"' -f $adminEmail),
         ('postgresql_admin_password = "{0}"' -f $pgPassword),
         ('gemini_api_key            = "{0}"' -f $gemini),
         ('jwt_secret_key            = "{0}"' -f $jwt),
         ('openwebui_admin_password  = "{0}"' -f $adminPassword)
     )
     if ($ResourceGroupName) { $lines += ('resource_group_name         = "{0}"' -f $ResourceGroupName) }
-    if ($Location)          { $lines += ('location                    = "{0}"' -f $Location) }
 
     $text = ($lines -join "`n") + "`n"
     [System.IO.File]::WriteAllText($TfVars, $text, (New-Object System.Text.UTF8Encoding($false)))
@@ -322,6 +351,7 @@ try {
     Write-Step "Reading deployment details"
     if ($VmIp -and $KeyVaultName -and $PostgresHost) {
         $Ip = $VmIp; $VaultName = $KeyVaultName; $PgHost = $PostgresHost
+        $AdminEmail = if ($AdminEmailParam) { $AdminEmailParam } else { "admin@yourcompany.com" }
     } else {
         if (-not (Test-Path (Join-Path $TfDir "terraform.tfstate"))) {
             Fail "No Terraform state on this computer. Pass -VmIp, -KeyVaultName and -PostgresHost, or run without -SkipInfra on the computer that created the infrastructure."
@@ -331,10 +361,12 @@ try {
             $Ip = (terraform output -raw public_ip_address | Out-String).Trim();  Test-Exit "terraform output public_ip_address"
             $PgHost = (terraform output -raw postgresql_fqdn | Out-String).Trim(); Test-Exit "terraform output postgresql_fqdn"
             $VaultName = (terraform output -raw key_vault_name | Out-String).Trim(); Test-Exit "terraform output key_vault_name"
+            $AdminEmail = (terraform output -raw openwebui_admin_email | Out-String).Trim(); Test-Exit "terraform output openwebui_admin_email"
         } finally { Pop-Location }
     }
     if ($Ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$') { Fail "Unexpected VM address '$Ip'." }
-    Write-Ok "VM: $Ip | Key Vault: $VaultName | PostgreSQL: $PgHost"
+    if (-not $AdminEmail) { Fail "openwebui_admin_email came back empty. Run 'cd terraform; terraform output openwebui_admin_email' to check, and confirm the last 'terraform apply' finished without errors." }
+    Write-Ok "VM: $Ip | Key Vault: $VaultName | PostgreSQL: $PgHost | Admin email: $AdminEmail"
 
     # 5b. Make sure the VM is actually running -------------------------
     # The VM is commonly deallocated between sessions to save Azure credit.
@@ -363,21 +395,28 @@ try {
     }
 
     # 5c. Check for the most common silent SSH blocker: your IP changed ----
-    # If the machine's public IP no longer matches allowed_ssh_cidr, every
-    # SSH attempt below will time out with no useful error. Catch it here.
+    # If the machine's public IP no longer matches allowed_ssh_cidr / allowed_web_cidr,
+    # SSH and/or the browser will be blocked with no useful error. Catch it here.
     if (Test-Path $TfVars) {
-        $cidrLine = Select-String -Path $TfVars -Pattern 'allowed_ssh_cidr\s*=\s*"([^"]+)"' -ErrorAction SilentlyContinue
-        if ($cidrLine) {
-            $allowedCidr = $cidrLine.Matches[0].Groups[1].Value
-            $currentIp = ""
-            try {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                $currentIp = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 10).ToString().Trim()
-            } catch { $currentIp = "" }
+        $currentIp = ""
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $currentIp = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 10).ToString().Trim()
+        } catch { $currentIp = "" }
 
-            if ($currentIp -and ($allowedCidr -notmatch [regex]::Escape($currentIp))) {
-                Write-Warn "Your current public IP ($currentIp) does not match allowed_ssh_cidr ($allowedCidr) in terraform.tfvars."
-                Write-Warn "SSH will likely time out. Update allowed_ssh_cidr, then run: cd terraform; terraform apply"
+        if ($currentIp) {
+            foreach ($varName in @("allowed_ssh_cidr", "allowed_web_cidr")) {
+                $cidrLine = Select-String -Path $TfVars -Pattern "$varName\s*=\s*`"([^`"]+)`"" -ErrorAction SilentlyContinue
+                if ($cidrLine) {
+                    $cidr = $cidrLine.Matches[0].Groups[1].Value
+                    if (-not (Test-IpInCidr -Ip $currentIp -Cidr $cidr)) {
+                        Write-Warn "Your current public IP ($currentIp) does not match $varName ($cidr) in terraform.tfvars."
+                    }
+                }
+            }
+            $sshLine = Select-String -Path $TfVars -Pattern 'allowed_ssh_cidr\s*=\s*"([^"]+)"' -ErrorAction SilentlyContinue
+            if ($sshLine -and -not (Test-IpInCidr -Ip $currentIp -Cidr $sshLine.Matches[0].Groups[1].Value)) {
+                Write-Warn "SSH will likely time out. Update allowed_ssh_cidr to $currentIp/32, then run: cd terraform; terraform apply"
                 $a = Read-Host "    Continue anyway and try SSH regardless? [y/N]"
                 if ($a -notmatch '^(y|yes)$') { Fail "Cancelled. Update allowed_ssh_cidr to $currentIp/32 and re-run terraform apply first." }
             }
@@ -426,7 +465,7 @@ try {
 
     # 8. Setup on the VM ----------------------------------------------
     Write-Step "Running setup.sh on the VM (Docker, Key Vault secrets, containers). This takes a few minutes."
-    Invoke-Remote "bash ~/open-webui-project/scripts/setup.sh '$VaultName' '$PgHost'"
+    Invoke-Remote "bash ~/open-webui-project/scripts/setup.sh '$VaultName' '$PgHost' '$AdminEmail'"
     Write-Ok "Setup finished."
 
     # 9. Validate -----------------------------------------------------

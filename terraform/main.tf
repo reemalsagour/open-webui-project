@@ -68,6 +68,18 @@ resource "azurerm_network_security_group" "open_webui" {
     source_address_prefix      = var.allowed_web_cidr
     destination_address_prefix = "*"
   }
+
+  security_rule {
+    name                       = "Allow-Streamlit"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8501"
+    source_address_prefix      = var.allowed_web_cidr
+    destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_network_interface" "open_webui" {

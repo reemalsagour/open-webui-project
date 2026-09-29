@@ -362,6 +362,28 @@ try {
         Write-Warn "Could not read VM power state. Continuing and letting the SSH check below decide."
     }
 
+    # 5c. Check for the most common silent SSH blocker: your IP changed ----
+    # If the machine's public IP no longer matches allowed_ssh_cidr, every
+    # SSH attempt below will time out with no useful error. Catch it here.
+    if (Test-Path $TfVars) {
+        $cidrLine = Select-String -Path $TfVars -Pattern 'allowed_ssh_cidr\s*=\s*"([^"]+)"' -ErrorAction SilentlyContinue
+        if ($cidrLine) {
+            $allowedCidr = $cidrLine.Matches[0].Groups[1].Value
+            $currentIp = ""
+            try {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                $currentIp = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 10).ToString().Trim()
+            } catch { $currentIp = "" }
+
+            if ($currentIp -and ($allowedCidr -notmatch [regex]::Escape($currentIp))) {
+                Write-Warn "Your current public IP ($currentIp) does not match allowed_ssh_cidr ($allowedCidr) in terraform.tfvars."
+                Write-Warn "SSH will likely time out. Update allowed_ssh_cidr, then run: cd terraform; terraform apply"
+                $a = Read-Host "    Continue anyway and try SSH regardless? [y/N]"
+                if ($a -notmatch '^(y|yes)$') { Fail "Cancelled. Update allowed_ssh_cidr to $currentIp/32 and re-run terraform apply first." }
+            }
+        }
+    }
+
     # 6. Wait for SSH -------------------------------------------------
     Write-Step "Connecting to the VM"
     $SshArgs = @('-i', $SshKeyPath, '-o', 'StrictHostKeyChecking=accept-new', '-o', 'ConnectTimeout=10', '-o', 'ServerAliveInterval=30')

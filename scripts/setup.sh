@@ -50,6 +50,7 @@ echo "[5] Pulling secrets from Azure Key Vault..."
 
 VAULT_NAME="${1:-kv-openwebui-project}"
 POSTGRES_HOST_ARG="${2:-}"
+ADMIN_EMAIL_ARG="${3:-admin@yourcompany.com}"
 
 az login --identity >/dev/null
 
@@ -68,7 +69,7 @@ GEMINI_API_KEY=${GEMINI_API_KEY}
 JWT_SECRET_KEY=${JWT_SECRET_KEY}
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
-OPENWEBUI_ADMIN_EMAIL=admin@yourcompany.com
+OPENWEBUI_ADMIN_EMAIL=${ADMIN_EMAIL_ARG}
 OPENWEBUI_ADMIN_PASSWORD=${OPENWEBUI_ADMIN_PASSWORD}
 FRONTEND_TEST_MODE=false
 BACKEND_URL=http://backend:8000

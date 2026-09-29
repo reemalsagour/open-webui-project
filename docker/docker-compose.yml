@@ -74,6 +74,5 @@ networks:
   ai-network:
 
 volumes:
-  postgres_data:
   open-webui-data:
   open-webui-api-key:

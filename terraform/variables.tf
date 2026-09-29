@@ -104,6 +104,11 @@ variable "jwt_secret_key" {
   sensitive   = true
 }
 
+variable "openwebui_admin_email" {
+  description = "Open WebUI administrator email"
+  type        = string
+}
+
 variable "openwebui_admin_password" {
   description = "Open WebUI admin password"
   type        = string

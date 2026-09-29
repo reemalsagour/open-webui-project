@@ -85,11 +85,11 @@ fi
 
 echo ""
 echo "[7] Starting services..."
-docker compose up -d --build
+sudo docker compose up -d --build
 
 echo ""
 echo "[8] Deployment status..."
-docker compose ps
+sudo docker compose ps
 
 echo ""
 echo "======================================"

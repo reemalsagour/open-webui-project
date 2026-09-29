@@ -315,14 +315,20 @@ try {
             $changes = @($plan.resource_changes | Where-Object {
                 ($_.change.actions -notcontains 'no-op') -and ($_.change.actions -notcontains 'read')
             })
+            $outputChanges = @($plan.output_changes.PSObject.Properties | Where-Object {
+                $_.Value.actions -and ($_.Value.actions -notcontains 'no-op')
+            })
 
-            if ($changes.Count -eq 0) {
+            if (($changes.Count -eq 0) -and ($outputChanges.Count -eq 0)) {
                 Write-Ok "Infrastructure is already up to date. Nothing to apply."
             } else {
                 Write-Host ""
                 Write-Host "    Planned changes:"
                 foreach ($c in $changes) {
                     Write-Host ("      {0,-16} {1}" -f ($c.change.actions -join '+'), $c.address)
+                }
+                foreach ($o in $outputChanges) {
+                    Write-Host ("      {0,-16} output.{1}" -f ($o.Value.actions -join '+'), $o.Name)
                 }
                 $destructive = @($changes | Where-Object { $_.change.actions -contains 'delete' })
                 Write-Host ""
@@ -332,7 +338,7 @@ try {
                     $a = Read-Host "    Type DESTROY to continue anyway, or press Enter to cancel"
                     if ($a -cne 'DESTROY') { Fail "Cancelled. Nothing was changed." }
                 } else {
-                    $a = Read-Host "    Apply these $($changes.Count) change(s)? [Y/n]"
+                    $a = Read-Host "    Apply these $($changes.Count + $outputChanges.Count) change(s)? [Y/n]"
                     if ($a -match '^(n|no)$') { Fail "Cancelled. Nothing was changed." }
                 }
                 Write-Step "Terraform apply (PostgreSQL can take 10-15 minutes on a first run)"
